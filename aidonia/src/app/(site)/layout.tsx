@@ -1,4 +1,7 @@
 "use client";
+import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
 import { useState, useEffect } from "react";
 import "../css/style.css";
 import Header from "../../components/Header";
@@ -6,7 +9,7 @@ import Footer from "../../components/Footer";
 
 import { ModalProvider } from "../context/QuickViewModalContext";
 import { CartModalProvider } from "../context/CartSidebarModalContext";
-import { ReduxProvider } from "@/redux/provider";
+import { AppProviders } from "@/redux/provider";
 import QuickViewModal from "@/components/Common/QuickViewModal";
 import CartSidebarModal from "@/components/Common/CartSidebarModal";
 import { PreviewSliderProvider } from "../context/PreviewSliderContext";
@@ -33,7 +36,7 @@ export default function RootLayout({
           <PreLoader />
         ) : (
           <>
-            <ReduxProvider>
+            <AppProviders>
               <CartModalProvider>
                 <ModalProvider>
                   <PreviewSliderProvider>
@@ -46,7 +49,7 @@ export default function RootLayout({
                   </PreviewSliderProvider>
                 </ModalProvider>
               </CartModalProvider>
-            </ReduxProvider>
+            </AppProviders>
             <ScrollToTop />
             <Footer />
           </>

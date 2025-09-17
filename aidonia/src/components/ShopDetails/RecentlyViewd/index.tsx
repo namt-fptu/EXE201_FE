@@ -7,8 +7,6 @@ import Link from "next/link";
 
 import { Swiper, SwiperSlide } from "swiper/react";
 import { useCallback, useRef } from "react";
-import "swiper/css/navigation";
-import "swiper/css";
 
 const RecentlyViewdItems = () => {
   const sliderRef = useRef(null);
