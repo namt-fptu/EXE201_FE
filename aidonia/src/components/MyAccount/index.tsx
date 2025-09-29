@@ -4,10 +4,26 @@ import Breadcrumb from "../Common/Breadcrumb";
 import Image from "next/image";
 import AddressModal from "./AddressModal";
 import Orders from "../Orders";
+import useAuthGuard from "@/hooks/useAuthGuard";
 
 const MyAccount = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [addressModal, setAddressModal] = useState(false);
+
+  // Protect route - require authentication to access my account
+  const { isChecking, canAccess } = useAuthGuard("/signin", {
+    requireAuth: true,
+    message: "Please sign in to access your account",
+  });
+
+  // Show loading while checking authentication
+  if (isChecking || !canAccess) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue"></div>
+      </div>
+    );
+  }
 
   const openAddressModal = () => {
     setAddressModal(true);

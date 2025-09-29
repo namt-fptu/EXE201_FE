@@ -4,31 +4,103 @@ import Link from "next/link";
 import React, { useState } from "react";
 import api from "@/services/axios";
 import { useRouter } from "next/navigation";
+import useUserStore from "@/redux/userStore";
+import { toast } from "react-toastify";
+import useAuthGuard from "@/hooks/useAuthGuard";
 
 const Signin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { setUser } = useUserStore();
+
+  // Protect route - redirect authenticated users away from signin page
+  const { isChecking, canAccess } = useAuthGuard("/", {
+    requireAuth: false,
+    message: "You are already signed in!",
+  });
+
+  // Show loading while checking authentication
+  if (isChecking || !canAccess) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue"></div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
     try {
-      const response = await api.post("auth/authentication", {
+      // Step 1: Authenticate user
+      const authResponse = await api.post("auth/authentication", {
         email,
         password,
       });
 
-      console.log("Sign-in successful", response.data);
+      console.log("Authentication successful", authResponse.data);
 
-      const { role } = response.data;
-      if (role === "Admin") {
-        router.push("/admin");
-      } else {
-        router.push("/");
+      if (authResponse.data && authResponse.data.id) {
+        // Step 2: Save token to localStorage
+        if (authResponse.data.token) {
+          localStorage.setItem("token", authResponse.data.token);
+        }
+
+        // Step 3: Save refresh token if available
+        if (authResponse.data.refreshToken) {
+          localStorage.setItem("refreshToken", authResponse.data.refreshToken);
+        }
+
+        // Step 4: Store user data in Zustand
+        const userData = {
+          id: authResponse.data.id.toString(),
+          username: authResponse.data.userName || authResponse.data.username,
+          role: authResponse.data.role,
+          avatarImage:
+            authResponse.data.avataImage || authResponse.data.avatarImage,
+        };
+
+        setUser(userData);
+
+        toast.success("Sign-in successful!");
+
+        // Step 5: Navigate based on role
+        if (userData.role === "Admin") {
+          router.push("/admin");
+        } else {
+          router.push("/");
+        }
       }
     } catch (error) {
       console.error("Error during sign-in", error);
+
+      if (error && typeof error === "object" && "code" in error) {
+        if (error.code === "ERR_NETWORK") {
+          toast.error(
+            "Network error. Please check if the backend server is running."
+          );
+        } else if (
+          "response" in error &&
+          error.response &&
+          typeof error.response === "object" &&
+          "status" in error.response
+        ) {
+          if (error.response.status === 401) {
+            toast.error("Invalid email or password");
+          } else {
+            toast.error("Sign-in failed. Please try again.");
+          }
+        } else {
+          toast.error("Sign-in failed. Please try again.");
+        }
+      } else {
+        toast.error("Sign-in failed. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -82,9 +154,10 @@ const Signin = () => {
 
                 <button
                   type="submit"
-                  className="w-full flex justify-center font-medium text-white bg-dark py-3 px-6 rounded-lg ease-out duration-200 hover:bg-blue mt-7.5"
+                  disabled={isLoading}
+                  className="w-full flex justify-center font-medium text-white bg-dark py-3 px-6 rounded-lg ease-out duration-200 hover:bg-blue mt-7.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Sign in to account
+                  {isLoading ? "Signing in..." : "Sign in to account"}
                 </button>
 
                 <a

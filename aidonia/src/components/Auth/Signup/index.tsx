@@ -4,8 +4,13 @@ import Link from "next/link";
 import React, { useState } from "react";
 import api from "@/services/axios";
 import { Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
+import useAuthGuard from "@/hooks/useAuthGuard";
 
 const Signup = () => {
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     userName: "",
     email: "",
@@ -20,6 +25,21 @@ const Signup = () => {
   const [passwordError, setPasswordError] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isRetypePasswordVisible, setIsRetypePasswordVisible] = useState(false);
+
+  // Protect route - redirect authenticated users away from signup page
+  const { isChecking, canAccess } = useAuthGuard("/", {
+    requireAuth: false,
+    message: "You are already signed in!",
+  });
+
+  // Show loading while checking authentication
+  if (isChecking || !canAccess) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue"></div>
+      </div>
+    );
+  }
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -67,7 +87,13 @@ const Signup = () => {
         sex: formData.sex,
         residentId: formData.residentId, // Sent as empty, backend will auto-generate
       });
+
       console.log("Registration successful", response.data);
+      toast.success("User created successfully! Redirecting to Sign In...");
+
+      setTimeout(() => {
+        router.push("/auth/signin");
+      }, 3000);
     } catch (error) {
       console.error("Error during registration", error);
       if (error.response) {
