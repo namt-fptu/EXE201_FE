@@ -29,8 +29,7 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     "/admin/:path*",
-    "/profile/:path*",
-    "/orders/:path*",
-    "/my-account/:path*",
+    // Removed my-account from middleware since we handle auth in the component
+    // "/my-account/:path*",
   ],
 };

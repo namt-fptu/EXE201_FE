@@ -25,6 +25,7 @@ const Signup = () => {
   const [passwordError, setPasswordError] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isRetypePasswordVisible, setIsRetypePasswordVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Protect route - redirect authenticated users away from signup page
   const { isChecking, canAccess } = useAuthGuard("/", {
@@ -61,14 +62,50 @@ const Signup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isSubmitting) return;
+
+    // Basic form validation
+    if (!formData.userName.trim()) {
+      toast.error("Please enter your full name");
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      toast.error("Please enter your email address");
+      return;
+    }
+
+    if (!formData.password) {
+      toast.error("Please enter a password");
+      return;
+    }
+
     if (formData.password !== formData.retypePassword) {
       console.error("Passwords do not match");
       setPasswordError("Passwords do not match");
       return;
     }
 
+    // Validate ResidentId if provided (must be exactly 12 digits)
+    if (formData.residentId && !/^\d{12}$/.test(formData.residentId)) {
+      toast.error("Resident ID must be exactly 12 digits");
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
-      console.log("Request payload:", {
+      const requestPayload = {
+        UserName: formData.userName,
+        Email: formData.email,
+        Password: formData.password,
+        PhoneNumber: formData.phoneNumber || null,
+        DateOfBirth: formData.dateOfBirth || null,
+        Sex: formData.sex || null,
+        ResidentId: formData.residentId || null,
+      };
+
+      console.log("Request payload (frontend format):", {
         userName: formData.userName,
         email: formData.email,
         password: formData.password,
@@ -78,27 +115,60 @@ const Signup = () => {
         residentId: formData.residentId,
       });
 
-      const response = await api.post("auth/register", {
-        userName: formData.userName,
-        email: formData.email,
-        password: formData.password,
-        phoneNumber: formData.phoneNumber,
-        dateOfBirth: formData.dateOfBirth,
-        sex: formData.sex,
-        residentId: formData.residentId, // Sent as empty, backend will auto-generate
-      });
+      console.log("Request payload (backend format):", requestPayload);
+
+      const response = await api.post("auth/register", requestPayload);
 
       console.log("Registration successful", response.data);
-      toast.success("User created successfully! Redirecting to Sign In...");
+      toast.success(
+        "Registration successful! Please check your email for verification and then sign in."
+      );
 
+      // Redirect to signin immediately since backend will handle email verification
       setTimeout(() => {
-        router.push("/auth/signin");
-      }, 3000);
+        router.push("/signin");
+      }, 2000);
     } catch (error) {
       console.error("Error during registration", error);
       if (error.response) {
-        console.error("Server response:", error.response.data);
+        console.error("Server response status:", error.response.status);
+        console.error("Server response data:", error.response.data);
+        console.error("Server response headers:", error.response.headers);
+
+        // Handle different types of error responses
+        let errorMessage = "Registration failed. Please try again.";
+
+        if (error.response.data) {
+          if (typeof error.response.data === "string") {
+            errorMessage = error.response.data;
+          } else if (error.response.data.message) {
+            errorMessage = error.response.data.message;
+            // If it's "User registration failed", it's likely a duplicate field issue
+            if (error.response.data.message === "User registration failed") {
+              errorMessage =
+                "Registration failed. This username, email, or phone number might already be taken. Please try different credentials.";
+            }
+          } else if (error.response.data.error) {
+            errorMessage = error.response.data.error;
+          } else if (error.response.data.errors) {
+            // Handle validation errors array
+            const errors = error.response.data.errors;
+            if (Array.isArray(errors)) {
+              errorMessage = errors.join(", ");
+            } else if (typeof errors === "object") {
+              errorMessage = Object.values(errors).flat().join(", ");
+            }
+          }
+        }
+
+        toast.error(errorMessage);
+      } else {
+        toast.error(
+          "Network error. Please check your connection and try again."
+        );
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -127,6 +197,7 @@ const Signup = () => {
                   placeholder="Enter your full name"
                   value={formData.userName}
                   onChange={handleChange}
+                  required
                   className="rounded-lg border border-gray-3 bg-gray-1 placeholder:text-dark-5 w-full py-3 px-5 outline-none duration-200 focus:border-transparent focus:shadow-input focus:ring-2 focus:ring-blue/20"
                 />
               </div>
@@ -142,6 +213,7 @@ const Signup = () => {
                   placeholder="Enter your email address"
                   value={formData.email}
                   onChange={handleChange}
+                  required
                   className="rounded-lg border border-gray-3 bg-gray-1 placeholder:text-dark-5 w-full py-3 px-5 outline-none duration-200 focus:border-transparent focus:shadow-input focus:ring-2 focus:ring-blue/20"
                 />
               </div>
@@ -158,6 +230,8 @@ const Signup = () => {
                     placeholder="Enter your password"
                     value={formData.password}
                     onChange={handleChange}
+                    required
+                    minLength={6}
                     className="rounded-lg border border-gray-3 bg-gray-1 placeholder:text-dark-5 w-full py-3 px-5 outline-none duration-200 focus:border-transparent focus:shadow-input focus:ring-2 focus:ring-blue/20"
                   />
                   <button
@@ -191,6 +265,8 @@ const Signup = () => {
                     placeholder="Re-type your password"
                     value={formData.retypePassword}
                     onChange={handleChange}
+                    required
+                    minLength={6}
                     className="rounded-lg border border-gray-3 bg-gray-1 placeholder:text-dark-5 w-full py-3 px-5 outline-none duration-200 focus:border-transparent focus:shadow-input focus:ring-2 focus:ring-blue/20"
                   />
                   <button
@@ -219,10 +295,10 @@ const Signup = () => {
 
               <div className="mb-5">
                 <label htmlFor="phoneNumber" className="block mb-2.5">
-                  Phone Number
+                  Phone Number <span className="text-gray-500">(Optional)</span>
                 </label>
                 <input
-                  type="text"
+                  type="tel"
                   name="phoneNumber"
                   id="phoneNumber"
                   placeholder="Enter your phone number"
@@ -234,7 +310,8 @@ const Signup = () => {
 
               <div className="mb-5">
                 <label htmlFor="dateOfBirth" className="block mb-2.5">
-                  Date of Birth
+                  Date of Birth{" "}
+                  <span className="text-gray-500">(Optional)</span>
                 </label>
                 <input
                   type="date"
@@ -242,6 +319,7 @@ const Signup = () => {
                   id="dateOfBirth"
                   value={formData.dateOfBirth}
                   onChange={handleChange}
+                  max={new Date().toISOString().split("T")[0]}
                   className="rounded-lg border border-gray-3 bg-gray-1 placeholder:text-dark-5 w-full py-3 px-5 outline-none duration-200 focus:border-transparent focus:shadow-input focus:ring-2 focus:ring-blue/20"
                 />
               </div>
@@ -265,9 +343,32 @@ const Signup = () => {
 
               <button
                 type="submit"
-                className="w-full flex justify-center font-medium text-white bg-dark py-3 px-6 rounded-lg ease-out duration-200 hover:bg-blue mt-7.5"
+                disabled={isSubmitting}
+                className="w-full flex justify-center font-medium text-white bg-dark py-3 px-6 rounded-lg ease-out duration-200 hover:bg-blue mt-7.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create Account
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Creating Account...
+                  </span>
+                ) : (
+                  "Create Account"
+                )}
               </button>
 
               <p className="text-center mt-6">

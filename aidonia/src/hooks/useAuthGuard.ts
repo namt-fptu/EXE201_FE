@@ -9,9 +9,10 @@ export const useAuthGuard = (
   options?: {
     requireAuth?: boolean;
     message?: string;
+    requiredRoles?: string[]; // New parameter for role-based access
   }
 ) => {
-  const { isAuthenticated } = useUserStore();
+  const { isAuthenticated, user } = useUserStore(); // Access user from store
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
   const [canAccess, setCanAccess] = useState(false);
@@ -27,6 +28,16 @@ export const useAuthGuard = (
         return;
       }
 
+      // Check for required roles
+      if (
+        options?.requiredRoles &&
+        !options.requiredRoles.includes(user?.role)
+      ) {
+        router.replace(redirectTo);
+        toast.error("You do not have permission to access this page");
+        return;
+      }
+
       // For auth pages (requireAuth: false or undefined) - redirect if already authenticated
       if (!options?.requireAuth && isAuth) {
         router.replace(redirectTo);
@@ -39,7 +50,7 @@ export const useAuthGuard = (
     };
 
     checkAuth();
-  }, [isAuthenticated, router, redirectTo, options]);
+  }, [isAuthenticated, user, router, redirectTo, options]);
 
   return { isChecking, canAccess };
 };
