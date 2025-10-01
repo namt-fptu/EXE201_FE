@@ -117,7 +117,7 @@ const Signup = () => {
 
       console.log("Request payload (backend format):", requestPayload);
 
-      const response = await api.post("auth/register", requestPayload);
+      const response = await api.post("users/register", requestPayload);
 
       console.log("Registration successful", response.data);
       toast.success(
