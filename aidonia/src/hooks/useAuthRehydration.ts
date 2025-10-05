@@ -36,17 +36,44 @@ export const useAuthRehydration = () => {
         // If we have a valid token but no user data, fetch user info
         if (validToken && !user) {
           try {
-            const response = await api.get(`users/${user.id}`); // You'll need to implement this endpoint
+            // Get user data from localStorage
+            const savedUserData = localStorage.getItem("user");
 
-            if (response.data) {
-              const userData = {
-                id: response.data.id.toString(),
-                username: response.data.username || response.data.userName,
-                role: response.data.role,
+            if (!savedUserData) {
+              console.error("No user data found in storage");
+              logout();
+              return;
+            }
+
+            let userData;
+            try {
+              userData = JSON.parse(savedUserData);
+            } catch (parseError) {
+              console.error("Invalid user data in storage:", parseError);
+              logout();
+              return;
+            }
+
+            if (!userData || !userData.id) {
+              console.error("No user ID found in stored user data");
+              logout();
+              return;
+            }
+
+            // Fetch fresh user data from API
+            const response = await api.get(`users/${userData.id}`);
+
+            if (response.data && response.data.data) {
+              const freshUserData = {
+                id: response.data.data.id.toString(),
+                username:
+                  response.data.data.userName || response.data.data.username,
+                role: response.data.data.role,
                 avatarImage:
-                  response.data.avataImage || response.data.avatarImage,
+                  response.data.data.avatarImage ||
+                  response.data.data.avataImage,
               };
-              setUser(userData);
+              setUser(freshUserData);
             }
           } catch (userError) {
             console.error("Failed to fetch user data:", userError);
