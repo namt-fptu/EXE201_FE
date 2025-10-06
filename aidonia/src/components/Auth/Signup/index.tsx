@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import api from "@/services/axios";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import useAuthGuard from "@/hooks/useAuthGuard";
 
 const Signup = () => {
@@ -66,17 +66,23 @@ const Signup = () => {
 
     // Basic form validation
     if (!formData.userName.trim()) {
-      toast.error("Please enter your full name");
+      toast.error("Please enter your full name", {
+        duration: 3000,
+      });
       return;
     }
 
     if (!formData.email.trim()) {
-      toast.error("Please enter your email address");
+      toast.error("Please enter your email address", {
+        duration: 3000,
+      });
       return;
     }
 
     if (!formData.password) {
-      toast.error("Please enter a password");
+      toast.error("Please enter a password", {
+        duration: 3000,
+      });
       return;
     }
 
@@ -88,7 +94,9 @@ const Signup = () => {
 
     // Validate ResidentId if provided (must be exactly 12 digits)
     if (formData.residentId && !/^\d{12}$/.test(formData.residentId)) {
-      toast.error("Resident ID must be exactly 12 digits");
+      toast.error("Resident ID must be exactly 12 digits", {
+        duration: 3000,
+      });
       return;
     }
 
@@ -121,7 +129,10 @@ const Signup = () => {
 
       console.log("Registration successful", response.data);
       toast.success(
-        "Registration successful! Please check your email for verification and then sign in."
+        "Registration successful! Please check your email for verification and then sign in.",
+        {
+          duration: 4000,
+        }
       );
 
       // Redirect to signin immediately since backend will handle email verification
@@ -161,10 +172,15 @@ const Signup = () => {
           }
         }
 
-        toast.error(errorMessage);
+        toast.error(errorMessage, {
+          duration: 4000,
+        });
       } else {
         toast.error(
-          "Network error. Please check your connection and try again."
+          "Network error. Please check your connection and try again.",
+          {
+            duration: 4000,
+          }
         );
       }
     } finally {

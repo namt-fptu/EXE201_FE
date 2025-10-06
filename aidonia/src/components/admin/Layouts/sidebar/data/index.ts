@@ -2,33 +2,50 @@ import * as Icons from "../icons";
 
 export const NAV_DATA = [
   {
-    label: "MAIN MENU",
+    label: "DASHBOARD",
     items: [
       {
         title: "Dashboard",
         icon: Icons.HomeIcon,
         items: [
           {
-            title: "eCommerce",
+            title: "Overview", 
             url: "/admin",
+          },
+          {
+            title: "Analytics",
+            url: "/admin/analytics",
+          },
+          {
+            title: "Charts",
+            url: "/admin/charts/basic-chart",
+          },
+          {
+            title: "Reports",
+            url: "/admin/reports",
           },
         ],
       },
+    ],
+  },
+  {
+    label: "MANAGEMENT",
+    items: [
+      {
+        title: "Packages",
+        url: "/admin/packages",
+        icon: Icons.Package,
+        items: [],
+      },
       {
         title: "Calendar",
-  url: "/admin/calendar",
+        url: "/admin/calendar",
         icon: Icons.Calendar,
         items: [],
       },
       {
-        title: "Profile",
-  url: "/admin/profile",
-        icon: Icons.User,
-        items: [],
-      },
-      {
         title: "Forms",
-        icon: Icons.Alphabet,
+        icon: Icons.Forms,
         items: [
           {
             title: "Form Elements",
@@ -42,7 +59,7 @@ export const NAV_DATA = [
       },
       {
         title: "Tables",
-  url: "/admin/tables",
+        url: "/admin/tables",
         icon: Icons.Table,
         items: [
           {
@@ -64,41 +81,19 @@ export const NAV_DATA = [
     ],
   },
   {
-    label: "OTHERS",
+    label: "ACCOUNT",
     items: [
       {
-        title: "Charts",
-        icon: Icons.PieChart,
-        items: [
-          {
-            title: "Basic Chart",
-            url: "/admin/charts/basic-chart",
-          },
-        ],
+        title: "Profile",
+        url: "/admin/profile",
+        icon: Icons.User,
+        items: [],
       },
       {
-        title: "UI Elements",
-        icon: Icons.FourCircle,
-        items: [
-          {
-            title: "Alerts",
-            url: "/admin/ui-elements/alerts",
-          },
-          {
-            title: "Buttons",
-            url: "/admin/ui-elements/buttons",
-          },
-        ],
-      },
-      {
-        title: "Authentication",
-        icon: Icons.Authentication,
-        items: [
-          {
-            title: "Sign In",
-            url: "/admin/auth/sign-in",
-          },
-        ],
+        title: "Settings",
+        url: "/admin/settings",
+        icon: Icons.Settings,
+        items: [],
       },
     ],
   },

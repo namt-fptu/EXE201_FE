@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import useUserStore from "@/redux/userStore";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
+import { normalizeRole, getRedirectPathByRole, hasRequiredRole } from "@/utils/auth-helpers";
 
 export const useAuthGuard = (
   redirectTo: string = "/",
@@ -24,24 +25,42 @@ export const useAuthGuard = (
       // For protected routes (requireAuth: true)
       if (options?.requireAuth && !isAuth) {
         router.replace(redirectTo);
-        toast.error(options.message || "Please sign in to access this page");
+        toast.error(options.message || "Please sign in to access this page", {
+          duration: 3000,
+        });
         return;
       }
 
-      // Check for required roles
-      if (
-        options?.requiredRoles &&
-        !options.requiredRoles.includes(user?.role)
-      ) {
-        router.replace(redirectTo);
-        toast.error("You do not have permission to access this page");
-        return;
+      // Check for required roles using centralized utility
+      if (options?.requiredRoles && user) {
+        if (!hasRequiredRole(user.role, options.requiredRoles)) {
+          router.replace(redirectTo);
+          toast.error("You do not have permission to access this page", {
+            duration: 3000,
+          });
+          return;
+        }
       }
 
       // For auth pages (requireAuth: false or undefined) - redirect if already authenticated
-      if (!options?.requireAuth && isAuth) {
-        router.replace(redirectTo);
-        toast.info(options.message || "You are already signed in!");
+      if (!options?.requireAuth && isAuth && user) {
+        let targetRedirect = redirectTo;
+        
+        // Use role-based redirect if option is enabled
+        if (options?.useRoleBasedRedirect) {
+          const normalizedRole = normalizeRole(user.role);
+          targetRedirect = getRedirectPathByRole(normalizedRole);
+        }
+        
+        // Prevent multiple toasts by checking if we're already showing one
+        const existingToasts = document.querySelectorAll('[data-sonner-toast]');
+        if (existingToasts.length === 0) {
+          toast.info(options.message || "You are already signed in!", {
+            duration: 3000,
+          });
+        }
+        
+        router.replace(targetRedirect);
         return;
       }
 

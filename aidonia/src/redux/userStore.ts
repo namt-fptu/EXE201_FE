@@ -25,12 +25,19 @@ const useUserStore = create<UserState>((set, get) => ({
     }
   },
   logout: () => {
+    console.log("🧹 UserStore: Clearing user state...");
     set({ user: null });
+    
     // Clear all authentication data
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
+      
+      // Also clear any session storage
+      sessionStorage.clear();
+      
+      console.log("✅ UserStore: All authentication data cleared");
     }
   },
   isAuthenticated: () => {

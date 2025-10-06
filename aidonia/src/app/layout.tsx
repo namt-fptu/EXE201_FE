@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import AuthProvider from "@/components/AuthProvider";
+import { Toaster } from "sonner";
 import fs from "fs";
 import path from "path";
+
+// Import clear auth utility for debugging
+import "@/utils/clear-auth";
 
 // Attempt to read the SVG from the source assets folder and embed as a data URL.
 // This lets us reference the exact file at build time: src/assets/logos/aidonia logo.svg
@@ -45,6 +49,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <AuthProvider>{children}</AuthProvider>
+        <Toaster 
+          position="top-right"
+          richColors
+          closeButton
+          expand={false}
+          duration={4000}
+        />
       </body>
     </html>
   );
