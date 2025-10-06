@@ -1,9 +1,10 @@
 import { create } from "zustand";
+import { NormalizedRole } from "@/utils/auth-helpers";
 
 interface User {
   id: string;
   username: string;
-  role: string;
+  role: NormalizedRole;
   avatarImage?: string;
 }
 

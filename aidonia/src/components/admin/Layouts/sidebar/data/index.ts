@@ -52,6 +52,12 @@ export const NAV_DATA = [
         ],
       },
       {
+        title: "Packages",
+        url: "/admin/packages",
+        icon: Icons.Package,
+        items: [],
+      },
+      {
         title: "Pages",
         icon: Icons.Alphabet,
         items: [

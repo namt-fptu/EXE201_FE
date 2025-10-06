@@ -1,24 +1,40 @@
 "use client";
 import Breadcrumb from "@/components/Common/Breadcrumb";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import api from "@/services/axios";
 import { useRouter } from "next/navigation";
 import useUserStore from "@/redux/userStore";
 import { toast } from "react-toastify";
 import useAuthGuard from "@/hooks/useAuthGuard";
+import { normalizeRole, redirectByRole } from "@/utils/auth-helpers";
 
 const Signin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { setUser } = useUserStore();
+  const { setUser, user, isAuthenticated, loadUserFromStorage } = useUserStore();
 
-  // Protect route - redirect authenticated users away from signin page
+  // Load user from storage on component mount
+  useEffect(() => {
+    loadUserFromStorage();
+  }, [loadUserFromStorage]);
+
+  // Handle role-based redirection for already authenticated users
+  useEffect(() => {
+    if (isAuthenticated() && user) {
+      const normalizedRole = normalizeRole(user.role);
+      toast.info("You are already signed in!");
+      redirectByRole(normalizedRole, router);
+    }
+  }, [user, isAuthenticated, router]);
+
+  // Protect route - redirect authenticated users away from signin page with role-based routing
   const { isChecking, canAccess } = useAuthGuard("/", {
     requireAuth: false,
     message: "You are already signed in!",
+    useRoleBasedRedirect: true, // Enable role-based redirection
   });
 
   // Show loading while checking authentication
@@ -54,11 +70,14 @@ const Signin = () => {
           localStorage.setItem("refreshToken", authResponse.data.refreshToken);
         }
 
-        // Step 4: Store user data in Zustand
+        // Step 4: Normalize role and store user data in Zustand
+        const rawRole = authResponse.data.role;
+        const normalizedRole = normalizeRole(rawRole);
+        
         const userData = {
           id: authResponse.data.id.toString(),
           username: authResponse.data.userName || authResponse.data.username,
-          role: authResponse.data.role,
+          role: normalizedRole, // Store normalized role
           avatarImage:
             authResponse.data.avataImage || authResponse.data.avatarImage,
         };
@@ -67,12 +86,8 @@ const Signin = () => {
 
         toast.success("Sign-in successful!");
 
-        // Step 5: Navigate based on role
-        if (userData.role === "Admin") {
-          router.push("/admin");
-        } else {
-          router.push("/");
-        }
+        // Step 5: Navigate based on normalized role
+        redirectByRole(normalizedRole, router);
       }
     } catch (error) {
       console.error("Error during sign-in", error);

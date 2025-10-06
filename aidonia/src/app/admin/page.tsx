@@ -1,3 +1,5 @@
+"use client";
+
 import { PaymentsOverview } from "@/components/admin/Charts/payments-overview";
 import { UsedDevices } from "@/components/admin/Charts/used-devices";
 import { WeeksProfit } from "@/components/admin/Charts/weeks-profit";
