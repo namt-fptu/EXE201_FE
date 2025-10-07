@@ -197,10 +197,10 @@ export default function PackagesManager() {
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-title-md2 font-bold text-dark dark:text-white">
+          <h2 className="text-title-md2 font-bold text-slate-900">
             Package Management
           </h2>
-          <p className="text-body font-medium">
+          <p className="text-body font-medium text-slate-600">
             Create, edit, and manage subscription packages
           </p>
         </div>
@@ -218,7 +218,7 @@ export default function PackagesManager() {
           )}
           <button
             onClick={handleCreatePackage}
-            className="inline-flex items-center justify-center gap-2.5 rounded-[7px] bg-primary px-6 py-[7px] text-regular font-medium text-gray-2 duration-300 ease-in-out hover:bg-blue-dark"
+            className="inline-flex items-center justify-center gap-2.5 rounded-[7px] bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-[7px] text-regular font-semibold text-white duration-300 ease-in-out hover:from-primary-600 hover:to-primary-700 hover:shadow-lg hover:shadow-primary-500/25 transform hover:scale-105"
           >
             <svg 
               className="fill-current" 
@@ -236,35 +236,35 @@ export default function PackagesManager() {
 
       {/* Stats Cards */}
       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-2 2xl:gap-7.5">
-        <div className="rounded-[10px] border border-stroke bg-white px-7.5 py-6 shadow-1 dark:border-dark-3 dark:bg-gray-dark dark:shadow-card">
-          <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full bg-[#3C50E0]/[0.08]">
-            <svg className="fill-[#3C50E0]" width="22" height="16" viewBox="0 0 22 16" fill="none">
+        <div className="rounded-[10px] border border-primary-200 bg-gradient-to-br from-white to-primary-50/50 px-7.5 py-6 shadow-lg shadow-primary-100/25 hover:shadow-xl hover:shadow-primary-200/30 transition-all duration-300">
+          <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full bg-primary-100">
+            <svg className="fill-primary-600" width="22" height="16" viewBox="0 0 22 16" fill="none">
               <path d="M11 15.1156C4.19376 15.1156 0.825012 8.61876 0.687512 8.34376C0.584387 8.13751 0.584387 7.86251 0.687512 7.65626C0.825012 7.38126 4.19376 0.918762 11 0.918762C17.8063 0.918762 21.175 7.38126 21.3125 7.65626C21.4156 7.86251 21.4156 8.13751 21.3125 8.34376C21.175 8.61876 17.8063 15.1156 11 15.1156ZM2.26876 8.00001C3.02501 9.27189 5.98126 13.5688 11 13.5688C16.0188 13.5688 18.975 9.27189 19.7313 8.00001C18.975 6.72814 16.0188 2.43126 11 2.43126C5.98126 2.43126 3.02501 6.72814 2.26876 8.00001Z"/>
               <path d="M11 10.9219C9.38438 10.9219 8.07812 9.61562 8.07812 8C8.07812 6.38438 9.38438 5.07812 11 5.07812C12.6156 5.07812 13.9219 6.38438 13.9219 8C13.9219 9.61562 12.6156 10.9219 11 10.9219ZM11 6.625C10.2437 6.625 9.625 7.24375 9.625 8C9.625 8.75625 10.2437 9.375 11 9.375C11.7563 9.375 12.375 8.75625 12.375 8C12.375 7.24375 11.7563 6.625 11 6.625Z"/>
             </svg>
           </div>
           <div className="mt-4 flex items-end justify-between">
             <div>
-              <h4 className="text-title-md font-bold text-dark dark:text-white">
+              <h4 className="text-title-md font-bold text-slate-900">
                 {packages.length}
               </h4>
-              <span className="text-body-sm font-medium">Total Packages</span>
+              <span className="text-body-sm font-semibold text-primary-700">Total Packages</span>
             </div>
           </div>
         </div>
 
-        <div className="rounded-[10px] border border-stroke bg-white px-7.5 py-6 shadow-1 dark:border-dark-3 dark:bg-gray-dark dark:shadow-card">
-          <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full bg-[#F0142F]/[0.08]">
-            <svg className="fill-[#F0142F]" width="22" height="18" viewBox="0 0 22 18" fill="none">
+        <div className="rounded-[10px] border border-accent-200 bg-gradient-to-br from-white to-accent-50/50 px-7.5 py-6 shadow-lg shadow-accent-100/25 hover:shadow-xl hover:shadow-accent-200/30 transition-all duration-300">
+          <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full bg-accent-100">
+            <svg className="fill-accent-600" width="22" height="18" viewBox="0 0 22 18" fill="none">
               <path d="M7.18418 8.03751C9.31543 8.03751 11.7949 8.03751 14.0078 8.03751C14.2891 8.03751 14.5703 7.89063 14.7188 7.64688C14.8672 7.40313 14.8672 7.12656 14.7188 6.88281L13.5 5.02344C13.3516 4.77969 13.0703 4.63281 12.7891 4.63281H11.5234C10.8281 4.63281 10.0469 3.98438 9.78906 3.25L8.5625 0.046875C8.30469 -0.6875 7.52344 -1.33594 6.82813 -1.33594H5.5625C4.86719 -1.33594 4.08594 -0.6875 3.82813 0.046875L2.60156 3.25C2.34375 3.98438 1.5625 4.63281 0.867188 4.63281H-0.398438C-1.09375 4.63281 -1.875 5.28125 -1.875 5.95313V15.4063C-1.875 16.0781 -1.09375 16.7266 -0.398438 16.7266H20.6016C21.2969 16.7266 22.0781 16.0781 22.0781 15.4063V5.95313C22.0781 5.28125 21.2969 4.63281 20.6016 4.63281H19.3359C18.6406 4.63281 17.8594 3.98438 17.6016 3.25L16.375 0.046875C16.1172 -0.6875 15.3359 -1.33594 14.6406 -1.33594H13.375C12.6797 -1.33594 11.8984 -0.6875 11.6406 0.046875L10.4141 3.25C10.1563 3.98438 9.375 4.63281 8.67969 4.63281H7.41406C6.71875 4.63281 5.9375 5.28125 5.9375 5.95313V15.4063C5.9375 16.0781 6.71875 16.7266 7.41406 16.7266H20.6016Z" />
             </svg>
           </div>
           <div className="mt-4 flex items-end justify-between">
             <div>
-              <h4 className="text-title-md font-bold text-dark dark:text-white">
+              <h4 className="text-title-md font-bold text-slate-900">
                 {packages.length > 0 ? `${Math.round(packages.reduce((sum, pkg) => sum + pkg.price, 0) / packages.length / 1000)}K` : '0'}
               </h4>
-              <span className="text-body-sm font-medium">Avg Price (VND)</span>
+              <span className="text-body-sm font-semibold text-accent-700">Avg Price (VND)</span>
             </div>
           </div>
         </div>
@@ -296,7 +296,7 @@ export default function PackagesManager() {
         cancelText="Cancel"
         isDestructive={true}
         onConfirm={confirmDeletePackage}
-        onCancel={() => {
+        onClose={() => {
           setShowDeleteDialog(false);
           setPackageToDelete(null);
         }}

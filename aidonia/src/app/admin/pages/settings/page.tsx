@@ -1,16 +1,16 @@
-import Breadcrumb from "@/components/Common/Breadcrumb";
-import type { Metadata } from "next";
-import { PersonalInfoForm } from "./_components/personal-info";
-import { UploadPhotoForm } from "./_components/upload-photo";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Settings Page",
-};
+import Breadcrumb from "@/components/admin/Breadcrumbs/Breadcrumb";
+import PersonalInfoForm from "./_components/personal-info"; // ✅ Đây là default export
+import { UploadPhotoForm } from "./_components/upload-photo"; // ✅ Sửa thành named import
+import useUserStore from "@/redux/userStore";
 
 export default function SettingsPage() {
+  const { user } = useUserStore();
+
   return (
-    <div className="mx-auto w-full max-w-[1080px]">
-  <Breadcrumb title="Settings" pages={['Settings']} />
+    <div className="mx-auto max-w-7xl">
+      <Breadcrumb pageName="Settings" />
 
       <div className="grid grid-cols-5 gap-8">
         <div className="col-span-5 xl:col-span-3">
@@ -22,5 +22,5 @@ export default function SettingsPage() {
       </div>
     </div>
   );
-};
+}
 

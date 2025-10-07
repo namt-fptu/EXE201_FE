@@ -37,12 +37,12 @@ export default function PackageTable({ packages, onEdit, onDelete, isLoading }: 
 
   if (isLoading) {
     return (
-      <div className="rounded-[10px] border border-stroke bg-white p-4 shadow-1 dark:border-dark-3 dark:bg-gray-dark dark:shadow-card sm:p-7.5">
+      <div className="rounded-[10px] border border-stroke bg-white p-4 shadow-1 sm:p-7.5">
         <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded mb-4"></div>
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div key={i} className="h-12 bg-gray-200 rounded"></div>
             ))}
           </div>
         </div>
@@ -52,25 +52,25 @@ export default function PackageTable({ packages, onEdit, onDelete, isLoading }: 
 
   if (packages.length === 0) {
     return (
-      <div className="rounded-[10px] border border-stroke bg-white p-4 shadow-1 dark:border-dark-3 dark:bg-gray-dark dark:shadow-card sm:p-7.5">
+      <div className="rounded-[10px] border border-stroke bg-white p-4 shadow-1 sm:p-7.5">
         <div className="text-center py-12">
-          <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+          <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
             <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-dark dark:text-white mb-2">No packages found</h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">Get started by creating your first package.</p>
+          <h3 className="text-lg font-medium text-dark mb-2">No packages found</h3>
+          <p className="text-gray-500 mb-4">Get started by creating your first package.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-[10px] border border-stroke bg-white p-4 shadow-1 dark:border-dark-3 dark:bg-gray-dark dark:shadow-card sm:p-7.5">
+    <div className="rounded-[10px] border border-stroke bg-white p-4 shadow-1 sm:p-7.5">
       <Table>
         <TableHeader>
-          <TableRow className="border-none bg-[#F7F9FC] dark:bg-dark-2 [&>th]:py-4 [&>th]:text-base [&>th]:text-dark [&>th]:dark:text-white">
+          <TableRow className="border-none bg-[#F7F9FC] [&>th]:py-4 [&>th]:text-base [&>th]:text-dark">
             <TableHead className="min-w-[220px] xl:pl-7.5">Package</TableHead>
             <TableHead>Price</TableHead>
             <TableHead>Post Limit</TableHead>
@@ -81,7 +81,7 @@ export default function PackageTable({ packages, onEdit, onDelete, isLoading }: 
 
         <TableBody>
           {packages.map((pkg, index) => (
-            <TableRow key={index} className="border-[#eee] dark:border-dark-3">
+            <TableRow key={index} className="border-[#eee]">
               <TableCell className="min-w-[220px] xl:pl-7.5">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12.5 w-12.5 items-center justify-center rounded-full bg-[#3C50E0]/[0.08]">
@@ -90,10 +90,10 @@ export default function PackageTable({ packages, onEdit, onDelete, isLoading }: 
                     </svg>
                   </div>
                   <div>
-                    <h5 className="text-dark dark:text-white font-medium">
+                    <h5 className="text-slate-900 font-semibold">
                       {pkg.packageName}
                     </h5>
-                    <p className="text-body-sm font-medium text-body">
+                    <p className="text-body-sm font-medium text-slate-500">
                       Package ID: #{pkg.id}
                     </p>
                   </div>
@@ -101,13 +101,13 @@ export default function PackageTable({ packages, onEdit, onDelete, isLoading }: 
               </TableCell>
 
               <TableCell>
-                <p className="text-green font-medium">
+                <p className="text-emerald-600 font-semibold">
                   {formatPrice(pkg.price)}
                 </p>
               </TableCell>
 
               <TableCell>
-                <p className="text-dark dark:text-white">
+                <p className="text-slate-700 font-medium">
                   {pkg.postLimit} {pkg.postLimit === 1 ? 'post' : 'posts'}
                 </p>
               </TableCell>
@@ -121,7 +121,7 @@ export default function PackageTable({ packages, onEdit, onDelete, isLoading }: 
               <TableCell className="xl:pr-7.5">
                 <div className="flex items-center justify-end gap-x-3.5">
                   <button 
-                    className="hover:text-primary"
+                    className="text-gray-600 hover:text-primary"
                     onClick={() => onEdit(pkg)}
                     title="Edit Package"
                   >
@@ -132,7 +132,7 @@ export default function PackageTable({ packages, onEdit, onDelete, isLoading }: 
                   </button>
 
                   <button 
-                    className="hover:text-red"
+                    className="text-gray-600 hover:text-red"
                     onClick={() => pkg.id !== undefined && onDelete(pkg.id)}
                     title="Delete Package"
                   >

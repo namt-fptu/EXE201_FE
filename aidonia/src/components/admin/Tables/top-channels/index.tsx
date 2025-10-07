@@ -17,11 +17,11 @@ export async function TopChannels({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "grid rounded-[10px] bg-white px-7.5 pb-4 pt-7.5 shadow-1 dark:bg-gray-dark dark:shadow-card",
+        "grid rounded-[10px] bg-white px-7.5 pb-4 pt-7.5 shadow-1",
         className,
       )}
     >
-      <h2 className="mb-4 text-body-2xlg font-bold text-dark dark:text-white">
+      <h2 className="mb-4 text-body-2xlg font-bold text-slate-900">
         Top Channels
       </h2>
 
@@ -39,7 +39,7 @@ export async function TopChannels({ className }: { className?: string }) {
         <TableBody>
           {data.map((channel, i) => (
             <TableRow
-              className="text-center text-base font-medium text-dark dark:text-white"
+              className="text-center text-base font-medium text-slate-800"
               key={channel.name + i}
             >
               <TableCell className="flex min-w-fit items-center gap-3">

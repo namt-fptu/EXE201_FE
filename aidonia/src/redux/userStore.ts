@@ -1,10 +1,21 @@
 import { create } from "zustand";
 
 interface User {
-  id: string;
-  username: string;
-  role: string;
-  avatarImage?: string;
+  id: number;
+  userName: string;
+  email: string;
+  phoneNumber?: string;
+  location?: string | null;
+  role?: string;
+  reputationScore?: number;
+  avataImage?: string | null;
+  phoneVerified?: boolean;
+  mailVerified?: boolean;
+  token?: string | null;
+  refreshToken?: string | null;
+  // Additional fields for UI
+  fullName?: string;
+  bio?: string;
 }
 
 interface UserState {
@@ -13,6 +24,7 @@ interface UserState {
   logout: () => void;
   isAuthenticated: () => boolean;
   loadUserFromStorage: () => void;
+  updateUserProfile: (profileData: Partial<User>) => void;
 }
 
 const useUserStore = create<UserState>((set, get) => ({
@@ -62,6 +74,17 @@ const useUserStore = create<UserState>((set, get) => ({
         }
       }
     }
+  },
+  updateUserProfile: (profileData) => {
+    const { user } = get();
+    if (user) {
+      const updatedUser = { ...user, ...profileData };
+      set({ user: updatedUser });
+      // Also save to localStorage for persistence
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      }
+    }  
   },
 }));
 

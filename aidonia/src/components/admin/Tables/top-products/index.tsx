@@ -6,6 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table";
+import { compactFormat, standardFormat } from "../../../../app/admin/lib/format-number";
 import Image from "next/image";
 import { getTopProducts } from "../fetch";
 
@@ -13,54 +14,70 @@ export async function TopProducts() {
   const data = await getTopProducts();
 
   return (
-    <div className="rounded-[10px] bg-white shadow-1 dark:bg-gray-dark dark:shadow-card">
+    <div className="rounded-[10px] bg-white shadow-1">
       <div className="px-6 py-4 sm:px-7 sm:py-5 xl:px-8.5">
-        <h2 className="text-2xl font-bold text-dark dark:text-white">
+        <h2 className="text-2xl font-bold text-slate-900">
           Top Products
         </h2>
       </div>
 
       <Table>
         <TableHeader>
-          <TableRow className="border-t text-base [&>th]:h-auto [&>th]:py-3 sm:[&>th]:py-4.5">
-            <TableHead className="min-w-[120px] pl-5 sm:pl-6 xl:pl-7.5">
-              Product Name
-            </TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Price</TableHead>
-            <TableHead>Sold</TableHead>
-            <TableHead className="pr-5 text-right sm:pr-6 xl:pr-7.5">
-              Profit
-            </TableHead>
+          <TableRow className="border-none bg-[#F7F9FC] [&>th]:py-4 [&>th]:text-base [&>th]:text-slate-900 [&>th]:font-semibold">
+            <TableHead className="min-w-[200px] xl:pl-7.5">Product</TableHead>
+            <TableHead className="text-center">Category</TableHead>
+            <TableHead className="text-center">Price</TableHead>
+            <TableHead className="text-center">Sold</TableHead>
+            <TableHead className="text-right xl:pr-7.5">Profit</TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
-          {data.map((product) => (
-            <TableRow
-              className="text-base font-medium text-dark dark:text-white"
-              key={product.name + product.profit}
-            >
-              <TableCell className="flex min-w-fit items-center gap-3 pl-5 sm:pl-6 xl:pl-7.5">
-                <Image
-                  src={product.image}
-                  className="aspect-[6/5] w-15 rounded-[5px] object-cover"
-                  width={60}
-                  height={50}
-                  alt={"Image for product " + product.name}
-                  role="presentation"
-                />
-                <div>{product.name}</div>
+          {data.map((product, index) => (
+            <TableRow key={index} className="border-[#eee]">
+              <TableCell className="min-w-[200px] xl:pl-7.5">
+                <div className="flex items-center gap-3">
+                  <div className="relative h-12 w-12 rounded-lg overflow-hidden bg-gray-100">
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div>
+                    <h5 className="text-slate-900 font-semibold">
+                      {product.name}
+                    </h5>
+                    <p className="text-sm text-slate-600">
+                      #{index + 1}
+                    </p>
+                  </div>
+                </div>
               </TableCell>
 
-              <TableCell>{product.category}</TableCell>
+              <TableCell className="text-center">
+                <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-800">
+                  {product.category}
+                </span>
+              </TableCell>
 
-              <TableCell>${product.price}</TableCell>
+              <TableCell className="text-center">
+                <span className="font-semibold text-slate-900">
+                  ${standardFormat(product.price)}
+                </span>
+              </TableCell>
 
-              <TableCell>{product.sold}</TableCell>
+              <TableCell className="text-center">
+                <span className="font-semibold text-slate-900">
+                  {compactFormat(product.sold)}
+                </span>
+              </TableCell>
 
-              <TableCell className="pr-5 text-right text-green-light-1 sm:pr-6 xl:pr-7.5">
-                ${product.profit}
+              <TableCell className="text-right xl:pr-7.5">
+                <span className="font-medium text-green">
+                  ${standardFormat(product.profit)}
+                </span>
               </TableCell>
             </TableRow>
           ))}
