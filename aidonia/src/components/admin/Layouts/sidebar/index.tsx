@@ -55,20 +55,20 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          "max-w-[290px] overflow-hidden border-r border-gray-200 bg-white transition-[width] duration-200 ease-linear dark:border-gray-800 dark:bg-gray-dark",
-          isMobile ? "fixed bottom-0 top-0 z-50" : "sticky top-0 h-screen",
+          "max-w-[280px] overflow-hidden border-r border-gray-200/60 bg-white/95 backdrop-blur-xl transition-[width] duration-300 ease-out dark:border-gray-800/50 dark:bg-gray-900/95",
+          isMobile ? "fixed bottom-0 top-0 z-50 shadow-2xl" : "sticky top-0 h-screen",
           isOpen ? "w-full" : "w-0",
         )}
         aria-label="Main navigation"
         aria-hidden={!isOpen}
         inert={!isOpen}
       >
-        <div className="flex h-full flex-col py-10 pl-[25px] pr-[7px]">
-          <div className="relative pr-4.5">
+        <div className="flex h-full flex-col py-8 pl-6 pr-4">
+          <div className="relative pr-4">
             <Link
               href={"/"}
               onClick={() => isMobile && toggleSidebar()}
-              className="px-0 py-2.5 min-[850px]:py-0"
+              className="px-0 py-3 min-[850px]:py-2 block"
             >
               <Logo />
             </Link>
@@ -86,15 +86,15 @@ export function Sidebar() {
           </div>
 
           {/* Navigation */}
-          <div className="custom-scrollbar mt-6 flex-1 overflow-y-auto pr-3 min-[850px]:mt-10">
-            {NAV_DATA.map((section) => (
-              <div key={section.label} className="mb-6">
-                <h2 className="mb-5 text-sm font-medium text-dark-4 dark:text-dark-6">
+          <div className="custom-scrollbar mt-6 flex-1 overflow-y-auto pr-2 min-[850px]:mt-8">
+            {NAV_DATA.map((section, sectionIndex) => (
+              <div key={section.label} className={`${sectionIndex > 0 ? 'mt-8' : ''} mb-7`}>
+                <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {section.label}
                 </h2>
 
                 <nav role="navigation" aria-label={section.label}>
-                  <ul className="space-y-2">
+                  <ul className="space-y-1">
                     {section.items.map((item) => (
                       <li key={item.title}>
                         {item.items.length ? (
@@ -106,15 +106,15 @@ export function Sidebar() {
                               onClick={() => toggleExpanded(item.title)}
                             >
                               <item.icon
-                                className="size-6 shrink-0"
+                                className="size-5 shrink-0 text-current"
                                 aria-hidden="true"
                               />
 
-                              <span>{item.title}</span>
+                              <span className="font-medium">{item.title}</span>
 
                               <ChevronUp
                                 className={cn(
-                                  "ml-auto rotate-180 transition-transform duration-200",
+                                  "ml-auto size-4 rotate-180 transition-transform duration-200 text-gray-400",
                                   expandedItems.includes(item.title) &&
                                     "rotate-0",
                                 )}
@@ -124,17 +124,21 @@ export function Sidebar() {
 
                             {expandedItems.includes(item.title) && (
                               <ul
-                                className="ml-9 mr-0 space-y-1.5 pb-[15px] pr-0 pt-2"
+                                className="ml-6 mr-0 space-y-1 pb-3 pr-0 pt-2 border-l-2 border-gray-100 dark:border-gray-700"
                                 role="menu"
                               >
                                 {item.items.map((subItem) => (
-                                  <li key={subItem.title} role="none">
+                                  <li key={subItem.title} role="none" className="pl-4">
                                     <MenuItem
                                       as="link"
                                       href={subItem.url}
                                       isActive={pathname === subItem.url}
+                                      className="text-sm py-2 rounded-lg"
                                     >
-                                      <span>{subItem.title}</span>
+                                      <span className="flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
+                                        {subItem.title}
+                                      </span>
                                     </MenuItem>
                                   </li>
                                 ))}
@@ -151,17 +155,17 @@ export function Sidebar() {
 
                             return (
                               <MenuItem
-                                className="flex items-center gap-3 py-3"
+                                className="flex items-center gap-3"
                                 as="link"
                                 href={href}
                                 isActive={pathname === href}
                               >
                                 <item.icon
-                                  className="size-6 shrink-0"
+                                  className="size-5 shrink-0 text-current"
                                   aria-hidden="true"
                                 />
 
-                                <span>{item.title}</span>
+                                <span className="font-medium">{item.title}</span>
                               </MenuItem>
                             );
                           })()

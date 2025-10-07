@@ -6,7 +6,7 @@ import Image from "next/image";
 import AddressModal from "./AddressModal";
 import Orders from "../Orders";
 import useUserStore from "@/redux/userStore";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import api from "@/services/axios";
 
 const MyAccount = () => {
@@ -34,12 +34,17 @@ const MyAccount = () => {
         console.log("User profile loaded successfully:", response.data.data);
       } else {
         console.error("Failed to load user profile - no data received");
-        toast.error("No user data received from server");
+        toast.error("No user data received from server", {
+          duration: 3000,
+        });
       }
     } catch (error) {
       console.error("Error loading user profile:", error);
       toast.error(
-        "Failed to load user profile. Please check if backend is running."
+        "Failed to load user profile. Please check if backend is running.",
+        {
+          duration: 4000,
+        }
       );
     }
   }, [user]);
@@ -50,7 +55,9 @@ const MyAccount = () => {
       const isAuth = isAuthenticated();
 
       if (!isAuth) {
-        toast.error("Please sign in to access your account");
+        toast.error("Please sign in to access your account", {
+          duration: 3000,
+        });
         router.replace("/signin");
         return;
       }

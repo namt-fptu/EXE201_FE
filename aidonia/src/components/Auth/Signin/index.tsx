@@ -1,93 +1,134 @@
 "use client";
 import Breadcrumb from "@/components/Common/Breadcrumb";
 import Link from "next/link";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import api from "@/services/axios";
 import { useRouter } from "next/navigation";
 import useUserStore from "@/redux/userStore";
-import { toast } from "react-toastify";
-import useAuthGuard from "@/hooks/useAuthGuard";
+import { toast } from "sonner";
 import { normalizeRole, redirectByRole } from "@/utils/auth-helpers";
+import { ensureValidToken } from "@/services/auth";
 
 const Signin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { setUser, user, isAuthenticated, loadUserFromStorage } = useUserStore();
+  const { setUser, user, isAuthenticated, loadUserFromStorage } =
+    useUserStore();
 
-  // Load user from storage on component mount
+  // If already authenticated, redirect immediately without guard to avoid delays
+  const checkedRef = useRef(false);
   useEffect(() => {
-    loadUserFromStorage();
-  }, [loadUserFromStorage]);
-
-  // Handle role-based redirection for already authenticated users
-  useEffect(() => {
-    if (isAuthenticated() && user) {
-      const normalizedRole = normalizeRole(user.role);
-      toast.info("You are already signed in!");
-      redirectByRole(normalizedRole, router);
-    }
-  }, [user, isAuthenticated, router]);
-
-  // Protect route - redirect authenticated users away from signin page with role-based routing
-  const { isChecking, canAccess } = useAuthGuard("/", {
-    requireAuth: false,
-    message: "You are already signed in!",
-    useRoleBasedRedirect: true, // Enable role-based redirection
-  });
-
-  // Show loading while checking authentication
-  if (isChecking || !canAccess) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue"></div>
-      </div>
-    );
-  }
+    if (checkedRef.current) return;
+    try {
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const savedUser =
+        typeof window !== "undefined" ? localStorage.getItem("user") : null;
+      if (token && savedUser) {
+        const parsed = JSON.parse(savedUser);
+        const role = normalizeRole(parsed?.role);
+        console.log("[Signin] Found existing session. Redirect by role:", role);
+        checkedRef.current = true;
+        redirectByRole(role, router);
+      }
+    } catch {}
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Step 1: Authenticate user
+      // 1) Authenticate user
       const authResponse = await api.post("auth/authentication", {
         email,
         password,
       });
 
-      console.log("Authentication successful", authResponse.data);
+      console.log(
+        "[Signin] Authentication successful payload:",
+        authResponse.data
+      );
 
       if (authResponse.data && authResponse.data.id) {
-        // Step 2: Save token to localStorage
-        if (authResponse.data.token) {
-          localStorage.setItem("token", authResponse.data.token);
+        // 2) Save tokens IMMEDIATELY before anything else
+        const token =
+          authResponse.data.token ||
+          authResponse.data.accessToken ||
+          authResponse.data.AccessToken;
+        const refreshToken =
+          authResponse.data.refreshToken || authResponse.data.RefreshToken;
+
+        if (token) {
+          localStorage.setItem("token", token);
+          // Mirror token into cookie for middleware to allow /admin
+          document.cookie = `token=${token}; path=/; max-age=${60 * 30}`;
+          console.log("[Signin] Saved access token to storage & cookie.");
+        } else {
+          console.warn("[Signin] No access token present in response!");
         }
 
-        // Step 3: Save refresh token if available
-        if (authResponse.data.refreshToken) {
-          localStorage.setItem("refreshToken", authResponse.data.refreshToken);
+        if (refreshToken) {
+          localStorage.setItem("refreshToken", refreshToken);
+          console.log("[Signin] Saved refresh token to storage.");
+        } else {
+          console.warn("[Signin] No refresh token present in response!");
         }
 
-        // Step 4: Normalize role and store user data in Zustand
-        const rawRole = authResponse.data.role;
-        const normalizedRole = normalizeRole(rawRole);
-        
+        // 3) Extract user+role from login response (no extra API calls)
+        const rawRole =
+          authResponse.data.role ||
+          authResponse.data.Role ||
+          (Array.isArray(authResponse.data.roles)
+            ? authResponse.data.roles[0]
+            : undefined);
+        const normalized = normalizeRole(rawRole);
+        console.log(
+          "[Signin] Read role from login response:",
+          rawRole,
+          "=> normalized:",
+          normalized
+        );
+
+        // 4) Persist user in store (non-blocking)
         const userData = {
           id: authResponse.data.id.toString(),
           username: authResponse.data.userName || authResponse.data.username,
-          role: normalizedRole, // Store normalized role
+          role: normalized,
           avatarImage:
             authResponse.data.avataImage || authResponse.data.avatarImage,
         };
 
         setUser(userData);
 
-        toast.success("Sign-in successful!");
+        // 5) Immediate role-based redirect (<500ms)
+        if (normalized === "admin") {
+          console.log("[Signin] Redirecting to /admin...");
+        } else {
+          console.log("[Signin] Redirecting to / ...");
+        }
+        // Prefer replace so back button doesn't return to /signin
+        redirectByRole(normalized, {
+          push: (path: string) => router.replace(path),
+        });
 
-        // Step 5: Navigate based on normalized role
-        redirectByRole(normalizedRole, router);
+        // 6) Background token refresh check AFTER redirect (non-blocking)
+        // This ensures UI navigation is not blocked by any refresh call
+        setTimeout(() => {
+          try {
+            void ensureValidToken();
+          } catch {}
+        }, 1000);
+
+        // Optional UX toast (non-blocking)
+        toast.success(
+          normalized === "admin"
+            ? "Welcome back, Admin!"
+            : "Sign-in successful!",
+          { duration: 2000 }
+        );
       }
     } catch (error) {
       console.error("Error during sign-in", error);

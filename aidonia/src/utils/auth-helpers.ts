@@ -9,22 +9,16 @@ export type NormalizedRole = "admin" | "user";
  * @param role - Raw role string from API response
  * @returns Normalized role ("admin" or "user")
  */
-export const normalizeRole = (role: string | undefined | null): NormalizedRole => {
+export const normalizeRole = (
+  role: string | undefined | null
+): NormalizedRole => {
   if (!role) {
-    console.warn("Role is undefined or null, defaulting to 'user'");
     return "user";
   }
-  
+
   const normalizedRole = role.toLowerCase().trim();
-  
-  if (normalizedRole === "admin") {
-    return "admin";
-  } else if (normalizedRole === "user") {
-    return "user";
-  } else {
-    console.warn(`Unrecognized role: "${role}", defaulting to 'user'`);
-    return "user";
-  }
+  if (normalizedRole === "admin") return "admin";
+  return "user";
 };
 
 /**
@@ -38,12 +32,13 @@ export const getRedirectPathByRole = (role: NormalizedRole): string => {
 
 /**
  * Performs role-based redirection using Next.js router
- * @param role - Normalized user role
- * @param router - Next.js router instance
+ * Keep router type as any to avoid importing next/navigation in a shared util
  */
 export const redirectByRole = (role: NormalizedRole, router: any): void => {
   const path = getRedirectPathByRole(role);
-  router.push(path);
+  if (router && typeof router.push === "function") {
+    router.push(path);
+  }
 };
 
 /**
@@ -61,7 +56,8 @@ export const hasRequiredRole = (
   }
 
   const normalizedUserRole = normalizeRole(userRole);
-  const normalizedRequiredRoles = requiredRoles.map(role => normalizeRole(role));
-  
+  const normalizedRequiredRoles = requiredRoles.map((role) =>
+    normalizeRole(role)
+  );
   return normalizedRequiredRoles.includes(normalizedUserRole);
 };

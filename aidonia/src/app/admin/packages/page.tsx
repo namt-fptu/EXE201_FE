@@ -1,14 +1,15 @@
 "use client";
 
 import useAuthGuard from "@/hooks/useAuthGuard";
-import { PackagesManager } from "@/components/admin/Packages";
+import PackagesManager from "@/components/admin/Packages/PackagesManager";
 
-export default function PackagesPage() {
+export default function AdminPackagesPage() {
   // Protect route - only allow admin users
   const { isChecking, canAccess } = useAuthGuard("/signin", {
     requireAuth: true,
     requiredRoles: ["admin"],
-    message: "You do not have permission to access the packages management page.",
+    message:
+      "You do not have permission to access the packages management page.",
   });
 
   // Show loading while checking authentication

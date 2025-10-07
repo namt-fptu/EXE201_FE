@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import api from "@/services/axios";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import Breadcrumb from "@/components/Common/Breadcrumb";
 
 const VerifyEmailPage = () => {
@@ -37,7 +37,10 @@ const VerifyEmailPage = () => {
           setMessage(
             "Email verified successfully! You can now enjoy all features."
           );
-          toast.success("Email verified successfully!");
+          toast.success("Email verified successfully!", {
+            duration: 3000,
+            description: "Redirecting to your account..."
+          });
 
           // Redirect to account page after 3 seconds
           setTimeout(() => {
@@ -49,7 +52,9 @@ const VerifyEmailPage = () => {
             response.data?.message ||
               "Email verification failed. The link may be expired or invalid."
           );
-          toast.error("Email verification failed");
+          toast.error("Email verification failed", {
+            duration: 4000,
+          });
         }
       } catch (error) {
         console.error("Email verification error:", error);
@@ -57,7 +62,9 @@ const VerifyEmailPage = () => {
         setMessage(
           "Email verification failed. Please try again or contact support."
         );
-        toast.error("Email verification failed");
+        toast.error("Email verification failed", {
+          duration: 4000,
+        });
       } finally {
         setIsVerifying(false);
       }
@@ -69,7 +76,10 @@ const VerifyEmailPage = () => {
   const handleResendVerification = async () => {
     // This would need user email - you might want to add an email input field
     toast.info(
-      "Please go to your account settings to resend verification email"
+      "Please go to your account settings to resend verification email",
+      {
+        duration: 4000,
+      }
     );
     router.push("/my-account");
   };

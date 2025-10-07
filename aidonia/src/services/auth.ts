@@ -19,6 +19,8 @@ export const refreshAccessToken = async (): Promise<string | null> => {
     ) {
       const newToken = response.data.accessToken || response.data.AccessToken;
       localStorage.setItem("token", newToken);
+      // Keep cookie in sync so middleware continues to see an auth token
+      document.cookie = `token=${newToken}; path=/; max-age=${60 * 30}`;
       return newToken;
     }
 
@@ -29,6 +31,8 @@ export const refreshAccessToken = async (): Promise<string | null> => {
     localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
+  // Clear cookie as well
+  document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 
     // Clear user state
     const { logout } = useUserStore.getState();
@@ -70,26 +74,43 @@ export const ensureValidToken = async (): Promise<string | null> => {
 };
 
 export const logoutUser = async () => {
+  console.log("🚪 Starting logout process...");
+  
   try {
     // Get refresh token from localStorage
     const refreshToken = localStorage.getItem("refreshToken");
 
     if (refreshToken) {
+      console.log("🔑 Revoking refresh token...");
       // Use revoke-token endpoint to invalidate the refresh token
       await api.post("auth/revoke-token", {
         refreshToken: refreshToken,
       });
+      console.log("✅ Refresh token revoked successfully");
     }
   } catch (error) {
-    console.error("Error during token revocation:", error);
+    console.error("❌ Error during token revocation:", error);
     // Continue with logout even if token revocation fails
   } finally {
+    console.log("🧹 Clearing all local data...");
+    
     // Always clear local state regardless of API call result
     const { logout } = useUserStore.getState();
     logout();
 
-    // Redirect to signin page
+    // Additional cleanup for any residual data
     if (typeof window !== "undefined") {
+      // Clear all potential auth-related data
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+      
+      // Clear any cookies
+      document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      
+      console.log("✅ All local data cleared");
+      
+      // Force reload to reset all state
       window.location.href = "/signin";
     }
   }

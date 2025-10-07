@@ -1,44 +1,42 @@
 "use client";
-import { useEffect } from "react";
-import { ToastContainer } from "react-toastify";
-import useAuthRehydration from "@/hooks/useAuthRehydration";
+import { useEffect, useRef } from "react";
+import useUserStore from "@/redux/userStore";
 import useTokenRefresh from "@/hooks/useTokenRefresh";
-import "react-toastify/dist/ReactToastify.css";
 
 export default function AuthProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  useAuthRehydration();
+  const { loadUserFromStorage } = useUserStore();
   const { checkAndRefreshToken } = useTokenRefresh();
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hasInitializedRef = useRef(false);
 
-  // Set up automatic token refresh check every 10 minutes
+  // Simple initialization - just load from storage once
   useEffect(() => {
-    const interval = setInterval(
-      () => {
-        checkAndRefreshToken();
-      },
-      10 * 60 * 1000
-    ); // 10 minutes
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      
+      // Load user from storage synchronously
+      loadUserFromStorage();
+      
+      // Set up token refresh interval
+      refreshIntervalRef.current = setInterval(
+        () => {
+          checkAndRefreshToken();
+        },
+        10 * 60 * 1000
+      ); // 10 minutes
+    }
 
-    return () => clearInterval(interval);
-  }, [checkAndRefreshToken]);
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+  }, []); // Empty deps - run only once
 
-  return (
-    <>
-      {children}
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
-    </>
-  );
+  return <>{children}</>;
 }

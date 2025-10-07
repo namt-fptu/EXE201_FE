@@ -1,85 +1,102 @@
 "use client";
-import { useEffect } from "react";
-import api from "@/services/axios";
+import { useEffect, useState, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import useUserStore from "@/redux/userStore";
 import { ensureValidToken } from "@/services/auth";
+import { normalizeRole, redirectByRole } from "@/utils/auth-helpers";
+import { debugLog } from "@/utils/debug";
 
 export const useAuthRehydration = () => {
-  const { setUser, user, loadUserFromStorage, logout } = useUserStore();
+  const { user, loadUserFromStorage, logout } = useUserStore();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isRehydrated, setIsRehydrated] = useState(false);
+  const hasRunRef = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple runs
+    if (hasRunRef.current || isRehydrated) {
+      return;
+    }
+
     const rehydrateUser = async () => {
-      // First, try to load user from localStorage
-      if (!user) {
-        loadUserFromStorage();
-      }
-
-      // Check if we have valid authentication data
-      const token = localStorage.getItem("token");
-      const refreshToken = localStorage.getItem("refreshToken");
-
-      if (!token && !refreshToken) {
-        // No authentication data available
-        return;
-      }
-
+      hasRunRef.current = true;
+      
       try {
+        debugLog.auth("Starting auth rehydration...");
+        
+        // First, load user from localStorage
+        loadUserFromStorage();
+        
+        // Check if we have valid authentication data
+        const token = localStorage.getItem("token");
+        const refreshToken = localStorage.getItem("refreshToken");
+        const savedUser = localStorage.getItem("user");
+
+        if (!token && !refreshToken) {
+          debugLog.auth("No authentication data available");
+          setIsRehydrated(true);
+          return;
+        }
+
+        // Parse saved user data
+        let parsedUser = null;
+        if (savedUser) {
+          try {
+            parsedUser = JSON.parse(savedUser);
+            debugLog.auth("Loaded user from storage", { role: parsedUser.role, username: parsedUser.username });
+          } catch (error) {
+            debugLog.error("Error parsing saved user data", error);
+            localStorage.removeItem("user");
+            setIsRehydrated(true);
+            return;
+          }
+        }
+
         // Ensure we have a valid token (refresh if needed)
         const validToken = await ensureValidToken();
 
         if (!validToken) {
-          // Unable to get valid token, clear everything
+          debugLog.auth("Unable to get valid token, logging out");
           logout();
+          setIsRehydrated(true);
           return;
         }
 
-        // If we have a valid token but no user data, fetch user info
-        if (validToken && !user) {
-          try {
-            const response = await api.get(`users/${user.id}`); // You'll need to implement this endpoint
+        // If we have a valid token and user data, check if redirect is needed
+        if (validToken && parsedUser) {
+          debugLog.auth("Valid token and user data found, checking route...");
+          
+          const normalizedRole = normalizeRole(parsedUser.role);
+          debugLog.auth("User role", normalizedRole);
+          
+          // Only redirect if we're on specific pages that need redirect
+          const needsRedirect = pathname === "/signin" || (pathname === "/" && normalizedRole === "admin");
+          
+          if (needsRedirect) {
+            debugLog.auth(`Redirecting ${normalizedRole} from ${pathname}...`);
+            
+            // Immediate redirect without delay to prevent flash
+            redirectByRole(normalizedRole, router);
+          } else {
+            debugLog.auth(`User (${normalizedRole}) is on appropriate page: ${pathname}`);
+          }
+        }
 
-            if (response.data) {
-              const userData = {
-                id: response.data.id.toString(),
-                username: response.data.username || response.data.userName,
-                role: response.data.role,
-                avatarImage:
-                  response.data.avataImage || response.data.avatarImage,
-              };
-              setUser(userData);
-            }
-          } catch (userError) {
-            console.error("Failed to fetch user data:", userError);
-            if (
-              userError &&
-              typeof userError === "object" &&
-              "code" in userError
-            ) {
-              if (userError.code === "ERR_NETWORK") {
-                console.error(
-                  "Network error while fetching user data - backend server may be unreachable"
-                );
-              }
-            }
-          }
-        }
+        setIsRehydrated(true);
+        debugLog.success("Auth rehydration completed");
+
       } catch (error) {
-        console.error("Authentication rehydration failed:", error);
-        if (error && typeof error === "object" && "code" in error) {
-          if (error.code === "ERR_NETWORK") {
-            console.error(
-              "Network error during rehydration - backend server may be down"
-            );
-          }
-        }
+        debugLog.error("Authentication rehydration failed", error);
         logout();
+        setIsRehydrated(true);
       }
     };
 
     rehydrateUser();
-  }, [setUser, user, loadUserFromStorage, logout]);
+  }, []); // Empty dependency array - run only once on mount
 
-  return { user };
+  return { user, isRehydrated };
 };
 
 export default useAuthRehydration;

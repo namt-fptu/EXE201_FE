@@ -1,11 +1,46 @@
 import { selectTotalPrice } from "@/redux/features/cart-slice";
 import { useAppSelector } from "@/redux/store";
-import React from "react";
+import React, { useState } from "react";
 import { useSelector } from "react-redux";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const OrderSummary = () => {
   const cartItems = useAppSelector((state) => state.cartReducer.items);
   const totalPrice = useSelector(selectTotalPrice);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const router = useRouter();
+
+  const handleCheckout = async () => {
+    if (cartItems.length === 0) {
+      toast.warning("Your cart is empty", {
+        duration: 3000,
+        description: "Add some items to your cart before checkout",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // Simulate checkout process
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast.success("Redirecting to checkout...", {
+        duration: 3000,
+        description: `Processing order of $${totalPrice}`,
+      });
+
+      // Navigate to checkout page
+      router.push('/checkout');
+    } catch (error) {
+      toast.error("Checkout failed", {
+        duration: 3000,
+        description: "Please try again",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="lg:max-w-[455px] w-full">
@@ -54,10 +89,23 @@ const OrderSummary = () => {
 
           {/* <!-- checkout button --> */}
           <button
-            type="submit"
-            className="w-full flex justify-center font-medium text-white bg-blue py-3 px-6 rounded-md ease-out duration-200 hover:bg-blue-dark mt-7.5"
+            onClick={handleCheckout}
+            disabled={isProcessing || cartItems.length === 0}
+            className="w-full flex items-center justify-center gap-2 font-medium text-white bg-blue py-3 px-6 rounded-md ease-out duration-200 hover:bg-blue-dark disabled:bg-gray-400 disabled:cursor-not-allowed mt-7.5"
           >
-            Process to Checkout
+            {isProcessing ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Processing...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                Process to Checkout
+              </>
+            )}
           </button>
         </div>
       </div>

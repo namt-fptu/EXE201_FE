@@ -19,11 +19,16 @@ interface PackageTableProps {
   isLoading: boolean;
 }
 
-export default function PackageTable({ packages, onEdit, onDelete, isLoading }: PackageTableProps) {
+export default function PackageTable({
+  packages,
+  onEdit,
+  onDelete,
+  isLoading,
+}: PackageTableProps) {
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(price);
   };
 
@@ -42,7 +47,10 @@ export default function PackageTable({ packages, onEdit, onDelete, isLoading }: 
           <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div
+                key={i}
+                className="h-12 bg-gray-200 dark:bg-gray-700 rounded"
+              ></div>
             ))}
           </div>
         </div>
@@ -55,12 +63,26 @@ export default function PackageTable({ packages, onEdit, onDelete, isLoading }: 
       <div className="rounded-[10px] border border-stroke bg-white p-4 shadow-1 dark:border-dark-3 dark:bg-gray-dark dark:shadow-card sm:p-7.5">
         <div className="text-center py-12">
           <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-            <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            <svg
+              className="w-10 h-10 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+              />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-dark dark:text-white mb-2">No packages found</h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">Get started by creating your first package.</p>
+          <h3 className="text-lg font-medium text-dark dark:text-white mb-2">
+            No packages found
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
+            Get started by creating your first package.
+          </p>
         </div>
       </div>
     );
@@ -85,8 +107,18 @@ export default function PackageTable({ packages, onEdit, onDelete, isLoading }: 
               <TableCell className="min-w-[220px] xl:pl-7.5">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12.5 w-12.5 items-center justify-center rounded-full bg-[#3C50E0]/[0.08]">
-                    <svg className="w-6 h-6 text-[#3C50E0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    <svg
+                      className="w-6 h-6 text-[#3C50E0]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                      />
                     </svg>
                   </div>
                   <div>
@@ -108,7 +140,7 @@ export default function PackageTable({ packages, onEdit, onDelete, isLoading }: 
 
               <TableCell>
                 <p className="text-dark dark:text-white">
-                  {pkg.postLimit} {pkg.postLimit === 1 ? 'post' : 'posts'}
+                  {pkg.postLimit} {pkg.postLimit === 1 ? "post" : "posts"}
                 </p>
               </TableCell>
 
@@ -120,20 +152,30 @@ export default function PackageTable({ packages, onEdit, onDelete, isLoading }: 
 
               <TableCell className="xl:pr-7.5">
                 <div className="flex items-center justify-end gap-x-3.5">
-                  <button 
+                  <button
                     className="hover:text-primary"
                     onClick={() => onEdit(pkg)}
                     title="Edit Package"
                   >
                     <span className="sr-only">Edit Package</span>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
                     </svg>
                   </button>
 
-                  <button 
+                  <button
                     className="hover:text-red"
-                    onClick={() => pkg.id && onDelete(pkg.id)}
+                    onClick={() => pkg.id !== undefined && onDelete(pkg.id)}
                     title="Delete Package"
                   >
                     <span className="sr-only">Delete Package</span>

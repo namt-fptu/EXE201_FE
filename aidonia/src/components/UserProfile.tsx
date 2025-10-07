@@ -3,7 +3,7 @@ import { useState } from "react";
 import useUserStore from "@/redux/userStore";
 import { logoutUser, isTokenExpired } from "@/services/auth";
 import useTokenRefresh from "@/hooks/useTokenRefresh";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 export default function UserProfile() {
   const { user } = useUserStore();
@@ -11,6 +11,9 @@ export default function UserProfile() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleLogout = async () => {
+    toast.info("Signing out...", {
+      duration: 2000,
+    });
     await logoutUser();
   };
 
@@ -19,12 +22,18 @@ export default function UserProfile() {
     try {
       const success = await forceRefreshToken();
       if (success) {
-        toast.success("Token refreshed successfully!");
+        toast.success("Token refreshed successfully!", {
+          duration: 3000,
+        });
       } else {
-        toast.error("Failed to refresh token");
+        toast.error("Failed to refresh token", {
+          duration: 3000,
+        });
       }
     } catch (error) {
-      toast.error("Error refreshing token");
+      toast.error("Error refreshing token", {
+        duration: 3000,
+      });
     } finally {
       setIsRefreshing(false);
     }
