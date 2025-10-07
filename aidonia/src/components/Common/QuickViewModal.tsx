@@ -3,22 +3,31 @@ import React, { useEffect, useState } from "react";
 
 import { useModalContext } from "@/app/context/QuickViewModalContext";
 import { AppDispatch, useAppSelector } from "@/redux/store";
-import { addItemToCart } from "@/redux/features/cart-slice";
 import { useDispatch } from "react-redux";
 import Image from "next/image";
 import { usePreviewSlider } from "@/app/context/PreviewSliderContext";
 import { resetQuickView } from "@/redux/features/quickView-slice";
 import { updateproductDetails } from "@/redux/features/product-details";
+import { Product } from "@/types/product";
+
+// Extended Product type for posts
+interface ExtendedProduct extends Product {
+  category?: string;
+  condition?: string;
+  description?: string;
+  createdAt?: string;
+}
 
 const QuickViewModal = () => {
   const { isModalOpen, closeModal } = useModalContext();
   const { openPreviewModal } = usePreviewSlider();
-  const [quantity, setQuantity] = useState(1);
 
   const dispatch = useDispatch<AppDispatch>();
 
   // get the product data
-  const product = useAppSelector((state) => state.quickViewReducer.value);
+  const product = useAppSelector(
+    (state) => state.quickViewReducer.value
+  ) as ExtendedProduct;
 
   const [activePreview, setActivePreview] = useState(0);
 
@@ -29,15 +38,10 @@ const QuickViewModal = () => {
     openPreviewModal();
   };
 
-  // add to cart
-  const handleAddToCart = () => {
-    dispatch(
-      addItemToCart({
-        ...product,
-        quantity,
-      })
-    );
-
+  // handle contact seller
+  const handleContactSeller = () => {
+    // Add contact seller functionality here
+    alert("Contact seller functionality to be implemented");
     closeModal();
   };
 
@@ -55,8 +59,6 @@ const QuickViewModal = () => {
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-
-      setQuantity(1);
     };
   }, [isModalOpen, closeModal]);
 
@@ -104,13 +106,15 @@ const QuickViewModal = () => {
                         activePreview === key && "border-2 border-blue"
                       }`}
                     >
-                      <Image
-                        src={img || ""}
-                        alt="thumbnail"
-                        width={61}
-                        height={61}
-                        className="aspect-square"
-                      />
+                      {img && (
+                        <Image
+                          src={img}
+                          alt="thumbnail"
+                          width={61}
+                          height={61}
+                          className="aspect-square"
+                        />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -154,127 +158,61 @@ const QuickViewModal = () => {
             </div>
 
             <div className="max-w-[445px] w-full">
-              <span className="inline-block text-custom-xs font-medium text-white py-1 px-3 bg-green mb-6.5">
-                SALE 20% OFF
-              </span>
+              {/* Show condition badge instead of sale badge */}
+              {product.condition && (
+                <span className="inline-block text-custom-xs font-medium text-white py-1 px-3 bg-blue mb-6.5">
+                  {product.condition.toUpperCase()}
+                </span>
+              )}
 
               <h3 className="font-semibold text-xl xl:text-heading-5 text-dark mb-4">
                 {product.title}
               </h3>
 
               <div className="flex flex-wrap items-center gap-5 mb-6">
-                <div className="flex items-center gap-1.5">
-                  {/* <!-- stars --> */}
-                  <div className="flex items-center gap-1">
-                    <svg
-                      className="fill-[#FFA645]"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 18 18"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <g clipPath="url(#clip0_375_9172)">
-                        <path
-                          d="M16.7906 6.72187L11.7 5.93438L9.39377 1.09688C9.22502 0.759375 8.77502 0.759375 8.60627 1.09688L6.30002 5.9625L1.23752 6.72187C0.871891 6.77812 0.731266 7.25625 1.01252 7.50938L4.69689 11.3063L3.82502 16.6219C3.76877 16.9875 4.13439 17.2969 4.47189 17.0719L9.05627 14.5687L13.6125 17.0719C13.9219 17.2406 14.3156 16.9594 14.2313 16.6219L13.3594 11.3063L17.0438 7.50938C17.2688 7.25625 17.1563 6.77812 16.7906 6.72187Z"
-                          fill=""
-                        />
-                      </g>
-                      <defs>
-                        <clipPath id="clip0_375_9172">
-                          <rect width="18" height="18" fill="white" />
-                        </clipPath>
-                      </defs>
-                    </svg>
-
-                    <svg
-                      className="fill-[#FFA645]"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 18 18"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <g clipPath="url(#clip0_375_9172)">
-                        <path
-                          d="M16.7906 6.72187L11.7 5.93438L9.39377 1.09688C9.22502 0.759375 8.77502 0.759375 8.60627 1.09688L6.30002 5.9625L1.23752 6.72187C0.871891 6.77812 0.731266 7.25625 1.01252 7.50938L4.69689 11.3063L3.82502 16.6219C3.76877 16.9875 4.13439 17.2969 4.47189 17.0719L9.05627 14.5687L13.6125 17.0719C13.9219 17.2406 14.3156 16.9594 14.2313 16.6219L13.3594 11.3063L17.0438 7.50938C17.2688 7.25625 17.1563 6.77812 16.7906 6.72187Z"
-                          fill=""
-                        />
-                      </g>
-                      <defs>
-                        <clipPath id="clip0_375_9172">
-                          <rect width="18" height="18" fill="white" />
-                        </clipPath>
-                      </defs>
-                    </svg>
-
-                    <svg
-                      className="fill-[#FFA645]"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 18 18"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <g clipPath="url(#clip0_375_9172)">
-                        <path
-                          d="M16.7906 6.72187L11.7 5.93438L9.39377 1.09688C9.22502 0.759375 8.77502 0.759375 8.60627 1.09688L6.30002 5.9625L1.23752 6.72187C0.871891 6.77812 0.731266 7.25625 1.01252 7.50938L4.69689 11.3063L3.82502 16.6219C3.76877 16.9875 4.13439 17.2969 4.47189 17.0719L9.05627 14.5687L13.6125 17.0719C13.9219 17.2406 14.3156 16.9594 14.2313 16.6219L13.3594 11.3063L17.0438 7.50938C17.2688 7.25625 17.1563 6.77812 16.7906 6.72187Z"
-                          fill=""
-                        />
-                      </g>
-                      <defs>
-                        <clipPath id="clip0_375_9172">
-                          <rect width="18" height="18" fill="white" />
-                        </clipPath>
-                      </defs>
-                    </svg>
-
-                    <svg
-                      className="fill-gray-4"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 18 18"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <g clipPath="url(#clip0_375_9172)">
-                        <path
-                          d="M16.7906 6.72187L11.7 5.93438L9.39377 1.09688C9.22502 0.759375 8.77502 0.759375 8.60627 1.09688L6.30002 5.9625L1.23752 6.72187C0.871891 6.77812 0.731266 7.25625 1.01252 7.50938L4.69689 11.3063L3.82502 16.6219C3.76877 16.9875 4.13439 17.2969 4.47189 17.0719L9.05627 14.5687L13.6125 17.0719C13.9219 17.2406 14.3156 16.9594 14.2313 16.6219L13.3594 11.3063L17.0438 7.50938C17.2688 7.25625 17.1563 6.77812 16.7906 6.72187Z"
-                          fill=""
-                        />
-                      </g>
-                      <defs>
-                        <clipPath id="clip0_375_9172">
-                          <rect width="18" height="18" fill="white" />
-                        </clipPath>
-                      </defs>
-                    </svg>
-
-                    <svg
-                      className="fill-gray-4"
-                      width="18"
-                      height="18"
-                      viewBox="0 0 18 18"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <g clipPath="url(#clip0_375_9172)">
-                        <path
-                          d="M16.7906 6.72187L11.7 5.93438L9.39377 1.09688C9.22502 0.759375 8.77502 0.759375 8.60627 1.09688L6.30002 5.9625L1.23752 6.72187C0.871891 6.77812 0.731266 7.25625 1.01252 7.50938L4.69689 11.3063L3.82502 16.6219C3.76877 16.9875 4.13439 17.2969 4.47189 17.0719L9.05627 14.5687L13.6125 17.0719C13.9219 17.2406 14.3156 16.9594 14.2313 16.6219L13.3594 11.3063L17.0438 7.50938C17.2688 7.25625 17.1563 6.77812 16.7906 6.72187Z"
-                          fill=""
-                        />
-                      </g>
-                      <defs>
-                        <clipPath id="clip0_375_9172">
-                          <rect width="18" height="18" fill="white" />
-                        </clipPath>
-                      </defs>
-                    </svg>
-                  </div>
-
-                  <span>
-                    <span className="font-medium text-dark"> 4.7 Rating </span>
-                    <span className="text-dark-2"> (5 reviews) </span>
+                {/* Show posting date instead of reviews */}
+                <div className="flex items-center gap-2">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 18 18"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M14.25 2.25H3.75C2.92157 2.25 2.25 2.92157 2.25 3.75V14.25C2.25 15.0784 2.92157 15.75 3.75 15.75H14.25C15.0784 15.75 15.75 15.0784 15.75 14.25V3.75C15.75 2.92157 15.0784 2.25 14.25 2.25Z"
+                      stroke="#6B7280"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M12 1.5V3"
+                      stroke="#6B7280"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M6 1.5V3"
+                      stroke="#6B7280"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M2.25 6.75H15.75"
+                      stroke="#6B7280"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span className="text-gray-600">
+                    Posted:{" "}
+                    {product.createdAt
+                      ? new Date(product.createdAt).toLocaleDateString("vi-VN")
+                      : "Unknown"}
                   </span>
                 </div>
 
@@ -303,16 +241,35 @@ const QuickViewModal = () => {
                     </defs>
                   </svg>
 
-                  <span className="font-medium text-dark"> In Stock </span>
+                  <span className="font-medium text-dark">
+                    {product.condition === "New"
+                      ? "Brand New"
+                      : product.condition === "Like New"
+                        ? "Like New"
+                        : product.condition === "Good"
+                          ? "Good Condition"
+                          : product.condition === "Fair"
+                            ? "Fair Condition"
+                            : "Available"}
+                  </span>
                 </div>
               </div>
 
-              <p>
-                Lorem Ipsum is simply dummy text of the printing and typesetting
-                industry. Lorem Ipsum has.
+              <p className="text-gray-600">
+                {product.description || "No description available."}
               </p>
 
-              <div className="flex flex-wrap justify-between gap-5 mt-6 mb-7.5">
+              {/* Show category information */}
+              {product.category && (
+                <div className="mt-4 mb-4">
+                  <span className="text-sm text-gray-500">Category: </span>
+                  <span className="text-sm font-medium text-blue">
+                    {product.category}
+                  </span>
+                </div>
+              )}
+
+              <div className="mt-6 mb-7.5">
                 <div>
                   <h4 className="font-semibold text-lg text-dark mb-3.5">
                     Price
@@ -320,94 +277,27 @@ const QuickViewModal = () => {
 
                   <span className="flex items-center gap-2">
                     <span className="font-semibold text-dark text-xl xl:text-heading-4">
-                      ${product.discountedPrice}
+                      {product.price?.toLocaleString("vi-VN")} VND
                     </span>
-                    <span className="font-medium text-dark-4 text-lg xl:text-2xl line-through">
-                      ${product.price}
-                    </span>
+                    {product.discountedPrice &&
+                      product.discountedPrice !== product.price && (
+                        <span className="font-medium text-dark-4 text-lg xl:text-2xl line-through">
+                          {product.discountedPrice?.toLocaleString("vi-VN")} VND
+                        </span>
+                      )}
                   </span>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-lg text-dark mb-3.5">
-                    Quantity
-                  </h4>
-
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => quantity > 1 && setQuantity(quantity - 1)}
-                      aria-label="button for remove product"
-                      className="flex items-center justify-center w-10 h-10 rounded-[5px] bg-gray-2 text-dark ease-out duration-200 hover:text-blue"
-                      disabled={quantity < 0 && true}
-                    >
-                      <svg
-                        className="fill-current"
-                        width="16"
-                        height="2"
-                        viewBox="0 0 16 2"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          clipRule="evenodd"
-                          d="M-8.548e-08 0.977778C-3.82707e-08 0.437766 0.437766 3.82707e-08 0.977778 8.548e-08L15.0222 1.31328e-06C15.5622 1.36049e-06 16 0.437767 16 0.977779C16 1.51779 15.5622 1.95556 15.0222 1.95556L0.977778 1.95556C0.437766 1.95556 -1.32689e-07 1.51779 -8.548e-08 0.977778Z"
-                          fill=""
-                        />
-                      </svg>
-                    </button>
-
-                    <span
-                      className="flex items-center justify-center w-20 h-10 rounded-[5px] border border-gray-4 bg-white font-medium text-dark"
-                      x-text="quantity"
-                    >
-                      {quantity}
-                    </span>
-
-                    <button
-                      onClick={() => setQuantity(quantity + 1)}
-                      aria-label="button for add product"
-                      className="flex items-center justify-center w-10 h-10 rounded-[5px] bg-gray-2 text-dark ease-out duration-200 hover:text-blue"
-                    >
-                      <svg
-                        className="fill-current"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          clipRule="evenodd"
-                          d="M8.08889 0C8.6289 2.36047e-08 9.06667 0.437766 9.06667 0.977778L9.06667 15.0222C9.06667 15.5622 8.6289 16 8.08889 16C7.54888 16 7.11111 15.5622 7.11111 15.0222L7.11111 0.977778C7.11111 0.437766 7.54888 -2.36047e-08 8.08889 0Z"
-                          fill=""
-                        />
-                        <path
-                          fillRule="evenodd"
-                          clipRule="evenodd"
-                          d="M0 7.91111C4.72093e-08 7.3711 0.437766 6.93333 0.977778 6.93333L15.0222 6.93333C15.5622 6.93333 16 7.3711 16 7.91111C16 8.45112 15.5622 8.88889 15.0222 8.88889L0.977778 8.88889C0.437766 8.88889 -4.72093e-08 8.45112 0 7.91111Z"
-                          fill=""
-                        />
-                      </svg>
-                    </button>
-                  </div>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-4">
                 <button
-                  disabled={quantity === 0 && true}
-                  onClick={() => handleAddToCart()}
-                  className={`inline-flex font-medium text-white bg-blue py-3 px-7 rounded-md ease-out duration-200 hover:bg-blue-dark
-                  `}
+                  onClick={handleContactSeller}
+                  className="inline-flex font-medium text-white bg-blue py-3 px-7 rounded-md ease-out duration-200 hover:bg-blue-dark"
                 >
-                  Add to Cart
+                  Contact Seller
                 </button>
 
-                <button
-                  className={`inline-flex items-center gap-2 font-medium text-white bg-dark py-3 px-6 rounded-md ease-out duration-200 hover:bg-opacity-95 `}
-                >
+                <button className="inline-flex items-center gap-2 font-medium text-white bg-dark py-3 px-6 rounded-md ease-out duration-200 hover:bg-opacity-95">
                   <svg
                     className="fill-current"
                     width="20"
@@ -423,7 +313,7 @@ const QuickViewModal = () => {
                       fill=""
                     />
                   </svg>
-                  Add to Wishlist
+                  Save Post
                 </button>
               </div>
             </div>

@@ -4,13 +4,24 @@ import { useRouter } from "next/navigation";
 import Breadcrumb from "../Common/Breadcrumb";
 import Image from "next/image";
 import AddressModal from "./AddressModal";
-import Orders from "../Orders";
 import useUserStore from "@/redux/userStore";
 import { toast } from "react-toastify";
 import api from "@/services/axios";
+import { AxiosError } from "axios";
+import packageService from "@/services/packageService";
+
+interface Post {
+  id: string;
+  title: string;
+  description?: string;
+  category?: string;
+  status: string;
+  createdAt: string;
+  images?: Array<{ url: string } | string>;
+}
 
 const MyAccount = () => {
-  const [activeTab, setActiveTab] = useState("orders");
+  const [activeTab, setActiveTab] = useState("posts");
   const [addressModal, setAddressModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
@@ -18,6 +29,8 @@ const MyAccount = () => {
   const [packagesLoading, setPackagesLoading] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   const { user, isAuthenticated } = useUserStore();
   const router = useRouter();
@@ -59,6 +72,10 @@ const MyAccount = () => {
       // First get the user's active packages
       const response = await api.get(`user_packages/package/active/${user.id}`);
       console.log("User packages response:", response.data);
+      console.log(
+        "User packages response structure:",
+        JSON.stringify(response.data, null, 2)
+      );
 
       // Handle different possible response structures
       if (response.data) {
@@ -70,8 +87,65 @@ const MyAccount = () => {
           const detailedPackages = await Promise.all(
             packageData.map(async (userPkg) => {
               try {
+                console.log("Processing user package:", userPkg);
+
+                // Check if we already have all the needed information
+                const hasBasicInfo =
+                  userPkg.packageName &&
+                  userPkg.price !== undefined &&
+                  userPkg.postLimit !== undefined;
+                const hasPackageInfo =
+                  userPkg.package && userPkg.package.packageName;
+
+                if (hasBasicInfo || hasPackageInfo) {
+                  console.log("Using existing package data, skipping API call");
+                  // Use existing data without making additional API call
+                  return {
+                    ...userPkg,
+                    packageName:
+                      userPkg.packageName ||
+                      userPkg.package?.packageName ||
+                      "Unknown Package",
+                    price: userPkg.price || userPkg.package?.price || 0,
+                    postLimit:
+                      userPkg.postLimit || userPkg.package?.postLimit || 0,
+                    durationInDays:
+                      userPkg.durationInDays ||
+                      userPkg.package?.durationInDays ||
+                      0,
+                    usedPosts:
+                      (userPkg.postLimit || userPkg.package?.postLimit || 0) -
+                      (userPkg.remainingPosts || 0),
+                  };
+                }
+
+                // Determine the correct package ID to use for API call
+                const packageId =
+                  userPkg.packageId || userPkg.package?.id || userPkg.id;
+                console.log(
+                  "Using package ID:",
+                  packageId,
+                  "for user package:",
+                  userPkg.id
+                );
+
+                if (!packageId) {
+                  console.warn(
+                    "No valid package ID found for user package:",
+                    userPkg
+                  );
+                  return {
+                    ...userPkg,
+                    packageName: "Unknown Package",
+                    price: 0,
+                    postLimit: 0,
+                    durationInDays: 0,
+                    usedPosts: 0,
+                  };
+                }
+
                 // Get detailed package info from packages/{id} endpoint
-                const detailResponse = await api.get(`packages/${userPkg.id}`);
+                const detailResponse = await api.get(`packages/${packageId}`);
                 const packageDetails =
                   detailResponse.data?.data || detailResponse.data;
 
@@ -79,21 +153,77 @@ const MyAccount = () => {
                 return {
                   ...userPkg,
                   packageName:
-                    packageDetails?.packageName || userPkg.packageName,
-                  price: packageDetails?.price || 0,
-                  postLimit: packageDetails?.postLimit || 0,
-                  durationInDays: packageDetails?.durationInDays || 0,
+                    packageDetails?.packageName ||
+                    userPkg.packageName ||
+                    userPkg.package?.packageName ||
+                    "Unknown Package",
+                  price:
+                    packageDetails?.price ||
+                    userPkg.price ||
+                    userPkg.package?.price ||
+                    0,
+                  postLimit:
+                    packageDetails?.postLimit ||
+                    userPkg.postLimit ||
+                    userPkg.package?.postLimit ||
+                    0,
+                  durationInDays:
+                    packageDetails?.durationInDays ||
+                    userPkg.durationInDays ||
+                    userPkg.package?.durationInDays ||
+                    0,
                   // Calculate used posts from remaining posts
-                  usedPosts: packageDetails?.postLimit
-                    ? packageDetails.postLimit - (userPkg.remainingPosts || 0)
-                    : 0,
+                  usedPosts:
+                    packageDetails?.postLimit ||
+                    userPkg.postLimit ||
+                    userPkg.package?.postLimit ||
+                    0
+                      ? (packageDetails?.postLimit ||
+                          userPkg.postLimit ||
+                          userPkg.package?.postLimit ||
+                          0) - (userPkg.remainingPosts || 0)
+                      : 0,
                 };
               } catch (detailError) {
+                const packageId =
+                  userPkg.packageId || userPkg.package?.id || userPkg.id;
                 console.error(
-                  `Error fetching details for package ${userPkg.id}:`,
+                  `Error fetching details for package ID ${packageId} (user package ${userPkg.id}):`,
                   detailError
                 );
-                return userPkg; // Return original data if details fetch fails
+
+                if (detailError instanceof AxiosError) {
+                  if (detailError.response?.status === 400) {
+                    console.error(
+                      "400 Bad Request - Invalid package ID or API endpoint"
+                    );
+                    console.error("Package data structure:", userPkg);
+                    console.error("Response data:", detailError.response?.data);
+                  } else if (detailError.response?.status === 404) {
+                    console.error("404 Not Found - Package details not found");
+                  } else if (detailError.response?.status === 500) {
+                    console.error("500 Server Error - Backend issue");
+                  }
+                }
+
+                // Return enhanced original data if details fetch fails
+                return {
+                  ...userPkg,
+                  packageName:
+                    userPkg.packageName ||
+                    userPkg.package?.packageName ||
+                    "Unknown Package",
+                  price: userPkg.price || userPkg.package?.price || 0,
+                  postLimit:
+                    userPkg.postLimit || userPkg.package?.postLimit || 0,
+                  durationInDays:
+                    userPkg.durationInDays ||
+                    userPkg.package?.durationInDays ||
+                    0,
+                  usedPosts:
+                    (userPkg.postLimit || userPkg.package?.postLimit || 0) -
+                    (userPkg.remainingPosts || 0),
+                };
               }
             })
           );
@@ -117,6 +247,50 @@ const MyAccount = () => {
       // Don't show error toast for packages as it's not critical
     } finally {
       setPackagesLoading(false);
+    }
+  }, [user]);
+
+  const loadUserPosts = useCallback(async () => {
+    if (!user?.id) {
+      console.log("No user ID available for posts:", user);
+      return;
+    }
+
+    setPostsLoading(true);
+    try {
+      const response = await api.get(`posts/user/${user.id}`);
+      console.log("User posts response:", response.data);
+
+      // Handle different possible response structures
+      if (response.data) {
+        // Check if data is nested in a data property or is the direct array
+        const postsData = response.data.data || response.data;
+
+        if (Array.isArray(postsData)) {
+          setUserPosts(postsData);
+          console.log("User posts loaded successfully:", postsData);
+        } else {
+          setUserPosts([]);
+          console.log("No posts found - data is not an array");
+        }
+      } else {
+        setUserPosts([]);
+        console.log("No posts found for user");
+      }
+    } catch (error) {
+      console.error("Error loading user posts:", error);
+      setUserPosts([]);
+      if (error instanceof AxiosError) {
+        if (error.response?.status === 404) {
+          console.log("No posts found (404) - user has no posts yet");
+        } else if (error.response?.status === 500) {
+          toast.error("Server error while loading posts");
+        } else {
+          toast.error("Failed to load posts");
+        }
+      }
+    } finally {
+      setPostsLoading(false);
     }
   }, [user]);
 
@@ -181,6 +355,7 @@ const MyAccount = () => {
       loadUserProfile(); // Load user profile data
       loadUserPackages(); // Load user packages data
       loadPaymentHistory(); // Load payment history data
+      loadUserPosts(); // Load user posts data
     }, 500); // Increased delay to let AuthProvider finish
 
     return () => clearTimeout(timer);
@@ -190,6 +365,7 @@ const MyAccount = () => {
     loadUserProfile,
     loadUserPackages,
     loadPaymentHistory,
+    loadUserPosts,
   ]);
 
   // Show loading while checking authentication
@@ -261,9 +437,9 @@ const MyAccount = () => {
                 <div className="p-4 sm:p-7.5 xl:p-9">
                   <div className="flex flex-wrap xl:flex-nowrap xl:flex-col gap-4">
                     <button
-                      onClick={() => setActiveTab("orders")}
+                      onClick={() => setActiveTab("posts")}
                       className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${
-                        activeTab === "orders"
+                        activeTab === "posts"
                           ? "text-white bg-blue"
                           : "text-dark-2 bg-gray-1"
                       }`}
@@ -295,7 +471,7 @@ const MyAccount = () => {
                           fill=""
                         />
                       </svg>
-                      Orders
+                      Posts
                     </button>
 
                     <button
@@ -459,15 +635,127 @@ const MyAccount = () => {
 
             
           <!--== user dashboard content start ==--> */}
-            {/* <!-- orders tab content start --> */}
+            {/* <!-- posts tab content start --> */}
             <div
               className={`xl:max-w-[770px] w-full bg-white rounded-xl shadow-1 ${
-                activeTab === "orders" ? "block" : "hidden"
+                activeTab === "posts" ? "block" : "hidden"
               }`}
             >
-              <Orders />
+              <div className="p-4 sm:p-7.5 xl:p-9">
+                <h3 className="text-xl font-semibold mb-6">My Posts</h3>
+
+                {postsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue"></div>
+                  </div>
+                ) : userPosts.length > 0 ? (
+                  <div className="space-y-4">
+                    {userPosts.map((post: Post) => (
+                      <div
+                        key={post.id}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <h4 className="font-semibold text-lg text-dark">
+                            {post.title}
+                          </h4>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs ${
+                              post.status === "active"
+                                ? "bg-green-100 text-green-800"
+                                : post.status === "pending"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {post.status}
+                          </span>
+                        </div>
+
+                        {post.description && (
+                          <p className="text-gray-600 mb-3 line-clamp-2">
+                            {post.description}
+                          </p>
+                        )}
+
+                        <div className="flex items-center justify-between text-sm text-gray-500">
+                          <span>
+                            Category: {post.category || "Uncategorized"}
+                          </span>
+                          <span>
+                            Created:{" "}
+                            {new Date(post.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        {post.images && post.images.length > 0 && (
+                          <div className="flex gap-2 mt-3">
+                            {post.images
+                              .slice(0, 3)
+                              .map(
+                                (
+                                  image: { url: string } | string,
+                                  index: number
+                                ) => (
+                                  <div
+                                    key={index}
+                                    className="w-16 h-16 relative"
+                                  >
+                                    <Image
+                                      src={
+                                        typeof image === "string"
+                                          ? image
+                                          : image.url
+                                      }
+                                      alt={`Post image ${index + 1}`}
+                                      fill
+                                      className="rounded object-cover"
+                                    />
+                                  </div>
+                                )
+                              )}
+                            {post.images.length > 3 && (
+                              <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-600">
+                                +{post.images.length - 3}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-gray-400 mb-4">
+                      <svg
+                        className="w-16 h-16 mx-auto"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No posts yet
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      You haven&apos;t created any posts yet.
+                    </p>
+                    <button
+                      onClick={() => (window.location.href = "/create-post")}
+                      className="px-4 py-2 bg-blue text-white rounded-md hover:bg-blue-600 transition-colors"
+                    >
+                      Create Your First Post
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-            {/* <!-- orders tab content end -->
+            {/* <!-- posts tab content end -->
 
           <!-- packages tab content start --> */}
             <div
@@ -478,6 +766,15 @@ const MyAccount = () => {
               <div className="p-4 sm:p-8.5">
                 <div className="flex items-center justify-between mb-7">
                   <h2 className="font-medium text-xl text-dark">My Packages</h2>
+                  <button
+                    onClick={() => {
+                      console.log("Manual reload packages");
+                      loadUserPackages();
+                    }}
+                    className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    Debug Reload
+                  </button>
                 </div>
 
                 {/* Package List */}

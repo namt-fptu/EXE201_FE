@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import useUserStore from "@/redux/userStore";
 import { useFirebaseUpload } from "@/hooks/useFirebaseUpload";
 import api from "@/services/axios";
+import packageService, { ActivePackage } from "@/services/packageService";
 import Image from "next/image";
 import { AxiosError } from "axios";
 import DebugPanel from "@/components/Common/DebugPanel";
@@ -29,7 +30,7 @@ const CreatePost = () => {
   }, [isAuthenticated, user, router]);
 
   const [formData, setFormData] = useState({
-    userPackagePackageId: 0,
+    userPackagePackageId: 0, // Maps to userPackageId from API response
     title: "",
     description: "",
     price: 0.01,
@@ -42,6 +43,80 @@ const CreatePost = () => {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [activePackage, setActivePackage] = useState<ActivePackage | null>(
+    null
+  );
+  const [packageLoading, setPackageLoading] = useState(false);
+
+  // Load active user package
+  const loadActiveUserPackage = useCallback(async () => {
+    if (!user?.id) {
+      console.log("No user ID available for loading active package:", user);
+      return;
+    }
+
+    setPackageLoading(true);
+    try {
+      const packageData = await packageService.getActiveUserPackage(user.id);
+
+      if (packageData) {
+        console.log("=== PACKAGE DATA DEBUG ===");
+        console.log("Full packageData object:", packageData);
+        console.log("packageData.userPackageId:", packageData.userPackageId);
+        console.log("packageData keys:", Object.keys(packageData));
+
+        // Check for alternative property names that might contain the ID we need
+        const packageDataAny = packageData as unknown as Record<
+          string,
+          unknown
+        >;
+        console.log("Checking alternative property names:");
+        console.log(
+          "- userPackagePackageId:",
+          packageDataAny.userPackagePackageId
+        );
+        console.log("- id:", packageDataAny.id);
+        console.log("- packageId:", packageDataAny.packageId);
+        console.log("- userPackageId (direct):", packageDataAny.userPackageId);
+        console.log("=== END DEBUG ===");
+
+        setActivePackage(packageData);
+
+        // Map userPackageId from API response to userPackagePackageId in form
+        // Try different possible property names since the API structure might vary
+        const userPackageId =
+          packageData.userPackageId ||
+          (packageDataAny.userPackagePackageId as number) ||
+          (packageDataAny.id as number) ||
+          (packageDataAny.packageId as number);
+
+        if (userPackageId && userPackageId !== 0) {
+          setFormData((prev) => ({
+            ...prev,
+            userPackagePackageId: userPackageId,
+          }));
+          console.log(
+            "✅ Successfully mapped userPackageId to userPackagePackageId:",
+            userPackageId
+          );
+          console.log("✅ Form data updated with package ID");
+        } else {
+          console.warn("❌ No valid package ID found in API response");
+          console.warn("Available properties:", Object.keys(packageData));
+          console.warn("packageData.userPackageId:", packageData.userPackageId);
+          console.warn("This will prevent post creation");
+        }
+      } else {
+        console.log("No active package found for user");
+        setActivePackage(null);
+      }
+    } catch (error) {
+      console.error("Error loading active user package:", error);
+      setActivePackage(null);
+    } finally {
+      setPackageLoading(false);
+    }
+  }, [user]);
 
   // Load categories
   useEffect(() => {
@@ -91,7 +166,8 @@ const CreatePost = () => {
 
     loadCategories();
     loadDraftPost();
-  }, []);
+    loadActiveUserPackage();
+  }, [loadActiveUserPackage]);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -263,6 +339,20 @@ const CreatePost = () => {
       return;
     }
 
+    if (!activePackage || !formData.userPackagePackageId) {
+      alert(
+        "No active package found. Please purchase a package to create posts."
+      );
+      return;
+    }
+
+    if (activePackage.remainingPosts <= 0) {
+      alert(
+        "You have no remaining posts in your current package. Please upgrade your package."
+      );
+      return;
+    }
+
     if (selectedImages.length === 0) {
       alert("Please select at least one image.");
       return;
@@ -430,6 +520,55 @@ const CreatePost = () => {
               Share your product with the community
             </p>
           </div>
+
+          {/* Active Package Display */}
+          {packageLoading ? (
+            <div className="px-6 py-3 bg-blue-50 border-b border-blue-200">
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                <span className="text-sm text-blue-600">
+                  Loading package information...
+                </span>
+              </div>
+            </div>
+          ) : activePackage ? (
+            <div className="px-6 py-3 bg-green-50 border-b border-green-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium text-green-800">
+                    Active Package: {activePackage.remainingPosts} posts
+                    remaining
+                  </span>
+                  <span className="ml-2 text-xs text-green-600">
+                    (Package ID: {formData.userPackagePackageId})
+                  </span>
+                </div>
+                <div className="text-xs text-green-600">
+                  Status: {activePackage.status}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="px-6 py-3 bg-yellow-50 border-b border-yellow-200">
+              <div className="flex items-center">
+                <svg
+                  className="h-4 w-4 text-yellow-600 mr-2"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span className="text-sm text-yellow-800">
+                  No active package found. You may need to purchase a package to
+                  create posts.
+                </span>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             {/* Title */}
@@ -676,7 +815,12 @@ const CreatePost = () => {
               <button
                 type="submit"
                 disabled={
-                  isSubmitting || isUploading || selectedImages.length === 0
+                  isSubmitting ||
+                  isUploading ||
+                  selectedImages.length === 0 ||
+                  !activePackage ||
+                  !formData.userPackagePackageId ||
+                  (activePackage && activePackage.remainingPosts <= 0)
                 }
                 className="px-6 py-2 bg-blue text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
@@ -694,6 +838,30 @@ const CreatePost = () => {
         </div>
       </div>
       <DebugPanel />
+
+      {/* Package Debug Info */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="fixed bottom-4 right-4 bg-gray-800 text-white p-4 rounded-lg shadow-lg text-sm max-w-sm">
+          <h4 className="font-semibold mb-2">Package Debug Info</h4>
+          <div className="space-y-1 text-xs">
+            <div>Loading: {packageLoading ? "Yes" : "No"}</div>
+            <div>Active Package: {activePackage ? "Yes" : "No"}</div>
+            {activePackage && (
+              <>
+                <div>API userPackageId: {activePackage.userPackageId}</div>
+                <div>Remaining Posts: {activePackage.remainingPosts}</div>
+                <div>Status: {activePackage.status}</div>
+              </>
+            )}
+            <div>
+              Form userPackagePackageId: {formData.userPackagePackageId}
+            </div>
+            <div className="text-yellow-300 text-xs mt-2">
+              Mapping: API.userPackageId → Form.userPackagePackageId
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
