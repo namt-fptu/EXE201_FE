@@ -21,13 +21,13 @@ export const useAuthRehydration = () => {
 
     const rehydrateUser = async () => {
       hasRunRef.current = true;
-      
+
       try {
         debugLog.auth("Starting auth rehydration...");
-        
+
         // First, load user from localStorage
         loadUserFromStorage();
-        
+
         // Check if we have valid authentication data
         const token = localStorage.getItem("token");
         const refreshToken = localStorage.getItem("refreshToken");
@@ -44,7 +44,10 @@ export const useAuthRehydration = () => {
         if (savedUser) {
           try {
             parsedUser = JSON.parse(savedUser);
-            debugLog.auth("Loaded user from storage", { role: parsedUser.role, username: parsedUser.username });
+            debugLog.auth("Loaded user from storage", {
+              role: parsedUser.role,
+              username: parsedUser.username,
+            });
           } catch (error) {
             debugLog.error("Error parsing saved user data", error);
             localStorage.removeItem("user");
@@ -66,26 +69,29 @@ export const useAuthRehydration = () => {
         // If we have a valid token and user data, check if redirect is needed
         if (validToken && parsedUser) {
           debugLog.auth("Valid token and user data found, checking route...");
-          
+
           const normalizedRole = normalizeRole(parsedUser.role);
           debugLog.auth("User role", normalizedRole);
-          
+
           // Only redirect if we're on specific pages that need redirect
-          const needsRedirect = pathname === "/signin" || (pathname === "/" && normalizedRole === "admin");
-          
+          const needsRedirect =
+            pathname === "/signin" ||
+            (pathname === "/" && normalizedRole === "admin");
+
           if (needsRedirect) {
             debugLog.auth(`Redirecting ${normalizedRole} from ${pathname}...`);
-            
+
             // Immediate redirect without delay to prevent flash
             redirectByRole(normalizedRole, router);
           } else {
-            debugLog.auth(`User (${normalizedRole}) is on appropriate page: ${pathname}`);
+            debugLog.auth(
+              `User (${normalizedRole}) is on appropriate page: ${pathname}`
+            );
           }
         }
 
         setIsRehydrated(true);
         debugLog.success("Auth rehydration completed");
-
       } catch (error) {
         debugLog.error("Authentication rehydration failed", error);
         logout();
