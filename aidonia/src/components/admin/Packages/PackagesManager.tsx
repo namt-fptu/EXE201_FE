@@ -271,22 +271,6 @@ export default function PackagesManager() {
             </div>
           </div>
         </div>
-
-        <div className="rounded-[10px] border border-accent-200 bg-gradient-to-br from-white to-accent-50/50 px-7.5 py-6 shadow-lg shadow-accent-100/25 hover:shadow-xl hover:shadow-accent-200/30 transition-all duration-300">
-          <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full bg-accent-100">
-            <svg className="fill-accent-600" width="22" height="18" viewBox="0 0 22 18" fill="none">
-              <path d="M7.18418 8.03751C9.31543 8.03751 11.7949 8.03751 14.0078 8.03751C14.2891 8.03751 14.5703 7.89063 14.7188 7.64688C14.8672 7.40313 14.8672 7.12656 14.7188 6.88281L13.5 5.02344C13.3516 4.77969 13.0703 4.63281 12.7891 4.63281H11.5234C10.8281 4.63281 10.0469 3.98438 9.78906 3.25L8.5625 0.046875C8.30469 -0.6875 7.52344 -1.33594 6.82813 -1.33594H5.5625C4.86719 -1.33594 4.08594 -0.6875 3.82813 0.046875L2.60156 3.25C2.34375 3.98438 1.5625 4.63281 0.867188 4.63281H-0.398438C-1.09375 4.63281 -1.875 5.28125 -1.875 5.95313V15.4063C-1.875 16.0781 -1.09375 16.7266 -0.398438 16.7266H20.6016C21.2969 16.7266 22.0781 16.0781 22.0781 15.4063V5.95313C22.0781 5.28125 21.2969 4.63281 20.6016 4.63281H19.3359C18.6406 4.63281 17.8594 3.98438 17.6016 3.25L16.375 0.046875C16.1172 -0.6875 15.3359 -1.33594 14.6406 -1.33594H13.375C12.6797 -1.33594 11.8984 -0.6875 11.6406 0.046875L10.4141 3.25C10.1563 3.98438 9.375 4.63281 8.67969 4.63281H7.41406C6.71875 4.63281 5.9375 5.28125 5.9375 5.95313V15.4063C5.9375 16.0781 6.71875 16.7266 7.41406 16.7266H20.6016Z" />
-            </svg>
-          </div>
-          <div className="mt-4 flex items-end justify-between">
-            <div>
-              <h4 className="text-title-md font-bold text-slate-900">
-                {packages.length > 0 ? `${Math.round(packages.reduce((sum, pkg) => sum + pkg.price, 0) / packages.length / 1000)}K` : '0'}
-              </h4>
-              <span className="text-body-sm font-semibold text-accent-700">Avg Price (VND)</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Package Table */}

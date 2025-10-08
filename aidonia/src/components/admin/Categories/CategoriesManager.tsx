@@ -205,21 +205,7 @@ export default function CategoriesManager() {
           </div>
         </div>
 
-        <div className="rounded-[10px] border border-accent-200 bg-gradient-to-br from-white to-accent-50/50 px-7.5 py-6 shadow-lg shadow-accent-100/25 hover:shadow-xl hover:shadow-accent-200/30 transition-all duration-300">
-          <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full bg-accent-100">
-            <svg className="fill-accent-600" width="22" height="18" viewBox="0 0 22 18" fill="none">
-              <path d="M7.18418 8.03751C9.31543 8.03751 11.7949 8.03751 14.0078 8.03751C14.2891 8.03751 14.5703 7.89063 14.7188 7.64688C14.8672 7.40313 14.8672 7.12656 14.7188 6.88281L13.5 5.02344C13.3516 4.77969 13.0703 4.63281 12.7891 4.63281H11.5234C10.8281 4.63281 10.0469 3.98438 9.78906 3.25L8.5625 0.046875C8.30469 -0.6875 7.52344 -1.33594 6.82813 -1.33594H1.125C0.507812 -1.33594 0 -0.828125 0 -0.210938V3.25C0 3.86719 0.507812 4.375 1.125 4.375H2.25V14.5C2.25 15.9453 3.42188 17.1172 4.86719 17.1172H17.1328C18.5781 17.1172 19.75 15.9453 19.75 14.5V8.03751C19.75 7.42032 19.2422 6.91251 18.625 6.91251H7.18418Z" />
-            </svg>
-          </div>
-          <div className="mt-4 flex items-end justify-between">
-            <div>
-              <h4 className="text-title-md font-bold text-slate-900">
-                {categories.length > 0 ? Math.round(categories.length / 2) : 0}
-              </h4>
-              <span className="text-body-sm font-semibold text-accent-700">Active Categories</span>
-            </div>
-          </div>
-        </div>
+        
       </div>
 
       {/* Category Table */}

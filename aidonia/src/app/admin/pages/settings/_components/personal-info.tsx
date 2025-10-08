@@ -4,7 +4,7 @@ import {
   EmailIcon,
   UserIcon,
 } from "@/assets/icons";
-import { InputGroup } from "@/components/admin/FormElements/InputGroup"; // ✅ Sửa từ default import thành named import
+import { InputGroup } from "@/components/admin/FormElements/InputGroup";
 import { ShowcaseSection } from "@/components/admin/Layouts/showcase-section";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -21,9 +21,9 @@ export default function PersonalInfo() {
     userName: "",
     email: "",
     phoneNumber: "",
-    oldPassword: "", // Current password for verification
-    newPassword: "", // New password (optional)
-    confirmPassword: "", // Confirm new password
+    oldPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
@@ -36,7 +36,6 @@ export default function PersonalInfo() {
         
         const response = await usersService.getCurrentUser();
         
-        // Handle the API response silently on initial load
         if (!response.isSuccess) {
           handleApiResponse(response, {
             context: "load profile",
@@ -48,7 +47,6 @@ export default function PersonalInfo() {
           console.log("API Response:", response.data);
           setUser(response.data);
           
-          // Also update localStorage to ensure consistency
           if (typeof window !== "undefined") {
             localStorage.setItem("user", JSON.stringify(response.data));
           }
@@ -57,20 +55,17 @@ export default function PersonalInfo() {
           showErrorToast("Failed to load user data", {
             description: "Falling back to locally stored information"
           });
-          // Fallback to localStorage
           loadUserFromStorage();
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
         
-        // Use comprehensive error handling
         handleApiError(error, {
           context: 'load profile',
           customMessage: "Failed to load user data",
           showDetails: true
         });
         
-        // Fallback to localStorage
         loadUserFromStorage();
       } finally {
         setIsLoading(false);
@@ -88,7 +83,6 @@ export default function PersonalInfo() {
         userName: user.userName || "",
         email: user.email || "",
         phoneNumber: user.phoneNumber || "",
-        // Keep password fields as they are to avoid clearing during typing
         oldPassword: prev.oldPassword,
         newPassword: prev.newPassword,
         confirmPassword: prev.confirmPassword,
@@ -104,14 +98,13 @@ export default function PersonalInfo() {
     if (user) {
       setFormData({
         userName: user.userName || "",
-        email: user.email || "", // Keep for display but won't be sent to API
+        email: user.email || "",
         phoneNumber: user.phoneNumber || "",
-        oldPassword: "", // Always reset password fields
+        oldPassword: "",
         newPassword: "",
         confirmPassword: "",
       });
     } else {
-      // Reset to empty form if no user data
       setFormData({
         userName: "",
         email: "",
@@ -121,7 +114,7 @@ export default function PersonalInfo() {
         confirmPassword: "",
       });
     }
-    setIsChangingPassword(false); // Reset password change state
+    setIsChangingPassword(false);
     toast.info("Changes cancelled");
   };
 
@@ -135,7 +128,6 @@ export default function PersonalInfo() {
       return;
     }
 
-    // Enhanced validation with better error messages
     if (!formData.oldPassword.trim()) {
       showErrorToast("Current password is required", {
         description: "Please enter your current password to verify your identity"
@@ -166,7 +158,6 @@ export default function PersonalInfo() {
       }
     }
     
-    // Initialize multi-step toast handler for profile update
     const toastHandler = new MultiStepToastHandler([
       "Validating current password...",
       isChangingPassword ? "Updating password..." : "Updating profile information...",
@@ -177,10 +168,8 @@ export default function PersonalInfo() {
     try {
       setIsLoading(true);
       
-      // Step 1: Validation
       toastHandler.startStep(0);
       
-      // Prepare update data - only 4 allowed fields: userName, password, phoneNumber, residentId
       const updateData = {
         userName: formData.userName.trim() || user.userName || "",
         password: isChangingPassword ? formData.newPassword.trim() : formData.oldPassword.trim(),
@@ -191,39 +180,33 @@ export default function PersonalInfo() {
       console.log("Updating user with data:", updateData);
       toastHandler.completeStep(0, "Validation successful");
       
-      // Step 2: Update API call
       toastHandler.startStep(1);
       const response = await usersService.update(user.id, updateData);
       
       toastHandler.completeStep(1, isChangingPassword ? "Password updated" : "Profile information updated");
       
       if (response.isSuccess) {
-        // Step 3: Synchronizing changes
         toastHandler.startStep(2);
         
-        // Check if password was changed
         const passwordWasChanged = isChangingPassword && formData.newPassword.trim();
         
         if (passwordWasChanged) {
           toastHandler.completeStep(2, "Changes synchronized");
           toastHandler.complete("Password changed successfully! Redirecting to login...");
           
-          // Wait a moment for the toast to show, then logout
           setTimeout(() => {
             logout();
             router.push("/auth/signin");
           }, 2000);
           
-          return; // Exit early, don't update local state since we're logging out
+          return;
         }
         
-        // For non-password updates, update local store immediately
         const updatedUser = {
           ...user,
           userName: updateData.userName,
           phoneNumber: updateData.phoneNumber,
           residentId: updateData.residentId,
-          // Keep other fields unchanged
           email: user.email,
           id: user.id,
           role: user.role,
@@ -231,7 +214,6 @@ export default function PersonalInfo() {
         };
         setUser(updatedUser);
         
-        // Also update localStorage to persist changes
         if (typeof window !== "undefined") {
           localStorage.setItem("user", JSON.stringify(updatedUser));
         }
@@ -239,10 +221,8 @@ export default function PersonalInfo() {
         console.log("Profile updated successfully, user store updated:", updatedUser);
         toastHandler.completeStep(2, "Local data synchronized");
         
-        // Step 4: Finalize
         toastHandler.startStep(3);
         
-        // Update form data to reflect changes immediately
         setFormData(prev => ({
           ...prev,
           userName: updateData.userName,
@@ -258,7 +238,6 @@ export default function PersonalInfo() {
         console.error("Update failed:", response);
         toastHandler.cleanup();
         
-        // Use comprehensive response handling
         handleApiResponse(response, {
           errorMessage: "Failed to update profile",
           context: "update profile"
@@ -268,13 +247,11 @@ export default function PersonalInfo() {
       console.error("Error updating profile:", error);
       toastHandler.cleanup();
       
-      // Handle specific error messages with enhanced feedback
       if (error.message === "Current password is incorrect") {
         showErrorToast("Current password is incorrect", {
           description: "Please verify your current password and try again"
         });
       } else {
-        // Use comprehensive error handling
         handleApiError(error, {
           context: 'update profile',
           showDetails: true
@@ -287,149 +264,204 @@ export default function PersonalInfo() {
 
   if (isLoading) {
     return (
-      <ShowcaseSection title="Personal Information">
-        <div className="flex items-center justify-center py-8">
+      <div className="rounded-xl bg-white p-8 shadow-lg border border-gray-100">
+        <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <span className="ml-3 text-sm text-gray-600">Loading user data...</span>
         </div>
-      </ShowcaseSection>
+      </div>
     );
   }
 
   return (
-    <ShowcaseSection title="Personal Information">
-      <form onSubmit={handleSubmit}>
-        <div className="mb-5.5">
-          <InputGroup
-            label="User Name"
-            placeholder="Enter your username"
-            value={formData.userName}
-            handleChange={(e) => handleInputChange("userName", e.target.value)}
-            name="userName"
-            icon={<UserIcon />}
-            disabled={isLoading}
-          />
-        </div>
+    <div className="rounded-xl bg-white shadow-lg border border-gray-100">
+      {/* Header */}
+      <div className="border-b border-gray-100 px-8 py-6">
+        <h2 className="text-2xl font-bold text-gray-900">Personal Information</h2>
+        <p className="text-sm text-gray-600 mt-1">Update your personal details and account settings</p>
+      </div>
 
-        <div className="mt-5.5">
-          <InputGroup
-            label="Email Address"
-            placeholder="Email address (view only)"
-            value={formData.email}
-            handleChange={(e) => handleInputChange("email", e.target.value)}
-            name="email"
-            type="email"
-            icon={<EmailIcon />}
-            disabled={true} // Always disabled - view only
-          />
-          <p className="text-xs text-gray-500 mt-1">Email cannot be changed for security reasons</p>
-        </div>
+      {/* Form Content */}
+      <div className="p-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* User Name Field */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-gray-700">
+              User Name
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <UserIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={formData.userName}
+                onChange={(e) => handleInputChange("userName", e.target.value)}
+                placeholder="Enter your username"
+                disabled={isLoading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
 
-        <div className="mt-5.5">
-          <InputGroup
-            label="Phone Number"
-            placeholder="Enter your phone number"
-            value={formData.phoneNumber}
-            handleChange={(e) => handleInputChange("phoneNumber", e.target.value)}
-            name="phoneNumber"
-            type="tel"
-            disabled={isLoading}
-          />
-        </div>
+          {/* Email Field (Disabled) */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-gray-700">
+              Email Address
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <EmailIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="email"
+                value={formData.email}
+                placeholder="Email address (view only)"
+                disabled={true}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+              />
+            </div>
+            <p className="text-xs text-gray-500">Email cannot be changed for security reasons</p>
+          </div>
 
-        <div className="mt-5.5">
-          <InputGroup
-            label="Current Password"
-            placeholder="Enter current password to confirm changes"
-            value={formData.oldPassword}
-            handleChange={(e) => handleInputChange("oldPassword", e.target.value)}
-            name="oldPassword"
-            type="password"
-            disabled={isLoading}
-            icon={
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
-              </svg>
-            }
-          />
-          <p className="text-xs text-gray-500 mt-1">Required to verify your identity</p>
-        </div>
+          {/* Phone Number Field */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-gray-700">
+              Phone Number
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+              </div>
+              <input
+                type="tel"
+                value={formData.phoneNumber}
+                onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
+                placeholder="Enter your phone number"
+                disabled={isLoading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
 
-        <div className="mt-5.5">
-          <div className="flex items-center gap-3 mb-3">
+          {/* Current Password Field */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-gray-700">
+              Current Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+                </svg>
+              </div>
+              <input
+                type="password"
+                value={formData.oldPassword}
+                onChange={(e) => handleInputChange("oldPassword", e.target.value)}
+                placeholder="Enter current password to confirm changes"
+                disabled={isLoading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+              />
+            </div>
+            <p className="text-xs text-gray-500">Required to verify your identity</p>
+          </div>
+
+          {/* Change Password Checkbox */}
+          <div className="flex items-center space-x-3 py-2">
             <input
               type="checkbox"
               id="changePassword"
               checked={isChangingPassword}
               onChange={(e) => setIsChangingPassword(e.target.checked)}
-              className="rounded border-gray-300 text-primary focus:ring-primary"
+              className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-2 focus:ring-primary"
             />
-            <label htmlFor="changePassword" className="text-sm font-medium text-gray-700">
+            <label htmlFor="changePassword" className="text-sm font-medium text-gray-700 cursor-pointer">
               Change Password
             </label>
           </div>
-          
-          {isChangingPassword && (
-            <>
-              <div className="mb-4">
-                <InputGroup
-                  label="New Password"
-                  placeholder="Enter new password"
-                  value={formData.newPassword}
-                  handleChange={(e) => handleInputChange("newPassword", e.target.value)}
-                  name="newPassword"
-                  type="password"
-                  disabled={isLoading}
-                  icon={
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+
+          {/* New Password Fields - Animated */}
+          <div className={`transition-all duration-300 ease-in-out ${isChangingPassword ? 'opacity-100 max-h-96' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+            <div className="space-y-4 pt-2">
+              {/* New Password */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  New Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
                     </svg>
-                  }
-                />
+                  </div>
+                  <input
+                    type="password"
+                    value={formData.newPassword}
+                    onChange={(e) => handleInputChange("newPassword", e.target.value)}
+                    placeholder="Enter new password"
+                    disabled={isLoading}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  />
+                </div>
               </div>
-              
-              <div className="mb-4">
-                <InputGroup
-                  label="Confirm New Password"
-                  placeholder="Confirm new password"
-                  value={formData.confirmPassword}
-                  handleChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                  name="confirmPassword"
-                  type="password"
-                  disabled={isLoading}
-                  icon={
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+
+              {/* Confirm Password */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Confirm New Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
                     </svg>
-                  }
-                />
+                  </div>
+                  <input
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                    placeholder="Confirm new password"
+                    disabled={isLoading}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  />
+                </div>
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
 
-        
-
-
-
-        <div className="flex justify-end gap-4 mt-6">
-          <button
-            type="button"
-            onClick={handleCancel}
-            disabled={isLoading}
-            className="flex justify-center rounded-lg border border-stroke bg-gray-2 px-6 py-2 font-medium text-dark hover:bg-gray-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="flex justify-center rounded-lg bg-primary px-6 py-2 font-medium text-white hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
-      </form>
-    </ShowcaseSection>
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-4 pt-6 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={isLoading}
+              className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="px-8 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save Changes</span>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
