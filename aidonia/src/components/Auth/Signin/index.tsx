@@ -14,15 +14,18 @@ const Signin = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { setUser } = useUserStore();
+  const { setUser, user, isAuthenticated, loadUserFromStorage } =
+    useUserStore();
 
   // If already authenticated, redirect immediately without guard to avoid delays
   const checkedRef = useRef(false);
   useEffect(() => {
     if (checkedRef.current) return;
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      const savedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const savedUser =
+        typeof window !== "undefined" ? localStorage.getItem("user") : null;
       if (token && savedUser) {
         const parsed = JSON.parse(savedUser);
         const role = normalizeRole(parsed?.role);
@@ -44,7 +47,10 @@ const Signin = () => {
         password,
       });
 
-      console.log("[Signin] Authentication successful payload:", authResponse.data);
+      console.log(
+        "[Signin] Authentication successful payload:",
+        authResponse.data
+      );
 
       if (authResponse.data && authResponse.data.id) {
         // 2) Save tokens IMMEDIATELY before anything else
@@ -75,9 +81,16 @@ const Signin = () => {
         const rawRole =
           authResponse.data.role ||
           authResponse.data.Role ||
-          (Array.isArray(authResponse.data.roles) ? authResponse.data.roles[0] : undefined);
+          (Array.isArray(authResponse.data.roles)
+            ? authResponse.data.roles[0]
+            : undefined);
         const normalized = normalizeRole(rawRole);
-        console.log("[Signin] Read role from login response:", rawRole, "=> normalized:", normalized);
+        console.log(
+          "[Signin] Read role from login response:",
+          rawRole,
+          "=> normalized:",
+          normalized
+        );
 
         // 4) Persist user in store (non-blocking)
         const userData = {
@@ -111,7 +124,9 @@ const Signin = () => {
 
         // Optional UX toast (non-blocking)
         toast.success(
-          normalized === "admin" ? "Welcome back, Admin!" : "Sign-in successful!",
+          normalized === "admin"
+            ? "Welcome back, Admin!"
+            : "Sign-in successful!",
           { duration: 2000 }
         );
       }

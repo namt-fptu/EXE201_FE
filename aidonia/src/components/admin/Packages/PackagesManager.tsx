@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Package, CreatePackageRequest, packagesService } from "@/services/packages";
+import {
+  Package,
+  CreatePackageRequest,
+  packagesService,
+} from "@/services/packages";
 import PackageTable from "./PackageTable";
 import PackageModal from "./PackageModal";
 import Breadcrumb from "../Breadcrumbs/Breadcrumb";
@@ -26,7 +30,7 @@ export default function PackagesManager() {
     try {
       setIsLoading(true);
       const response = await packagesService.getAll();
-      
+
       if (response.isSuccess) {
         setPackages(response.data);
       } else {
@@ -47,7 +51,7 @@ export default function PackagesManager() {
 
   const handleEditPackage = (pkg: Package) => {
     console.log("Editing package:", pkg);
-    
+
     if (pkg.id === undefined) {
       toast.error("Invalid package data", {
         duration: 3000,
@@ -55,7 +59,7 @@ export default function PackagesManager() {
       });
       return;
     }
-    
+
     setEditingPackage(pkg);
     setIsModalOpen(true);
   };
@@ -63,13 +67,21 @@ export default function PackagesManager() {
   const handleSavePackage = async (packageData: CreatePackageRequest) => {
     try {
       setIsSaving(true);
-      
+
       if (editingPackage?.id !== undefined) {
         // Update existing package
-        console.log("Updating package with ID:", editingPackage.id, "Data:", packageData);
-        const response = await packagesService.update(editingPackage.id, packageData);
+        console.log(
+          "Updating package with ID:",
+          editingPackage.id,
+          "Data:",
+          packageData
+        );
+        const response = await packagesService.update(
+          editingPackage.id,
+          packageData
+        );
         console.log("Update response:", response);
-        
+
         if (response.isSuccess) {
           toast.success("Package updated successfully!", {
             duration: 3000,
@@ -87,7 +99,7 @@ export default function PackagesManager() {
         console.log("Creating new package:", packageData);
         const response = await packagesService.create(packageData);
         console.log("Create response:", response);
-        
+
         if (response.isSuccess) {
           toast.success("Package created successfully!", {
             duration: 3000,
@@ -105,7 +117,8 @@ export default function PackagesManager() {
       console.error("Error saving package:", error);
       toast.error("Failed to save package. Please try again.", {
         duration: 4000,
-        description: error instanceof Error ? error.message : "Unknown error occurred",
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
       });
     } finally {
       setIsSaving(false);
@@ -114,8 +127,8 @@ export default function PackagesManager() {
 
   const handleDeletePackage = (id: number) => {
     console.log("Attempting to delete package with ID:", id);
-    const packageToDelete = packages.find(pkg => pkg.id === id);
-    
+    const packageToDelete = packages.find((pkg) => pkg.id === id);
+
     if (packageToDelete) {
       console.log("Package found for deletion:", packageToDelete);
       setPackageToDelete(packageToDelete);
@@ -141,7 +154,7 @@ export default function PackagesManager() {
       console.log("Deleting package with ID:", packageToDelete.id);
       const response = await packagesService.delete(packageToDelete.id);
       console.log("Delete response:", response);
-      
+
       if (response.isSuccess) {
         toast.success("Package deleted successfully!", {
           duration: 3000,
@@ -157,7 +170,8 @@ export default function PackagesManager() {
       console.error("Error deleting package:", error);
       toast.error("Failed to delete package. Please try again.", {
         duration: 4000,
-        description: error instanceof Error ? error.message : "Unknown error occurred",
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
       });
     } finally {
       setShowDeleteDialog(false);
@@ -179,10 +193,10 @@ export default function PackagesManager() {
         name: pkg.packageName,
         price: pkg.price,
         postLimit: pkg.postLimit,
-        durationInDays: pkg.durationInDays
+        durationInDays: pkg.durationInDays,
       });
     });
-    
+
     toast.info(`Found ${packages.length} packages`, {
       duration: 3000,
       description: "Check console for detailed package data with IDs",
@@ -205,13 +219,18 @@ export default function PackagesManager() {
           </p>
         </div>
         <div className="flex gap-3">
-          {process.env.NODE_ENV === 'development' && (
+          {process.env.NODE_ENV === "development" && (
             <button
               onClick={debugPackageIds}
               className="inline-flex items-center justify-center gap-2.5 rounded-[7px] bg-gray-500 px-4 py-[7px] text-regular font-medium text-white duration-300 ease-in-out hover:bg-gray-600"
             >
-              <svg className="fill-current" width="16" height="16" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              <svg
+                className="fill-current"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
               </svg>
               Debug IDs
             </button>
@@ -220,14 +239,14 @@ export default function PackagesManager() {
             onClick={handleCreatePackage}
             className="inline-flex items-center justify-center gap-2.5 rounded-[7px] bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-[7px] text-regular font-semibold text-white duration-300 ease-in-out hover:from-primary-600 hover:to-primary-700 hover:shadow-lg hover:shadow-primary-500/25 transform hover:scale-105"
           >
-            <svg 
-              className="fill-current" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 16 16" 
+            <svg
+              className="fill-current"
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
               fill="none"
             >
-              <path d="M15 7H9V1C9 0.4 8.6 0 8 0C7.4 0 7 0.4 7 1V7H1C0.4 7 0 7.4 0 8C0 8.6 0.4 9 1 9H7V15C7 15.6 7.4 16 8 16C8.6 16 9 15.6 9 15V9H15C15.6 9 16 8.6 16 8C16 7.4 15.6 7 15 7Z"/>
+              <path d="M15 7H9V1C9 0.4 8.6 0 8 0C7.4 0 7 0.4 7 1V7H1C0.4 7 0 7.4 0 8C0 8.6 0.4 9 1 9H7V15C7 15.6 7.4 16 8 16C8.6 16 9 15.6 9 15V9H15C15.6 9 16 8.6 16 8C16 7.4 15.6 7 15 7Z" />
             </svg>
             Add New Package
           </button>

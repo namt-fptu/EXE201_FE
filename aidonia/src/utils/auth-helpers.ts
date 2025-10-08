@@ -56,6 +56,8 @@ export const hasRequiredRole = (
   }
 
   const normalizedUserRole = normalizeRole(userRole);
-  const normalizedRequiredRoles = requiredRoles.map((role) => normalizeRole(role));
+  const normalizedRequiredRoles = requiredRoles.map((role) =>
+    normalizeRole(role)
+  );
   return normalizedRequiredRoles.includes(normalizedUserRole);
 };

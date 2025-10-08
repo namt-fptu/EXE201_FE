@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { NormalizedRole } from "@/utils/auth-helpers";
 
 interface User {
   id: number;
