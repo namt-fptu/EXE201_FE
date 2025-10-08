@@ -5,11 +5,16 @@ import type { ApexOptions } from "apexcharts";
 import dynamic from "next/dynamic";
 
 type PropsType = {
-  data: { name: string; amount: number }[];
+  data: { name: string; value: number; color?: string }[];
 };
 
 const Chart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+    </div>
+  ),
 });
 
 export function DonutChart({ data }: PropsType) {
@@ -90,7 +95,7 @@ export function DonutChart({ data }: PropsType) {
   return (
     <Chart
       options={chartOptions}
-      series={data.map((item) => item.amount)}
+      series={data.map((item) => item.value)}
       type="donut"
     />
   );

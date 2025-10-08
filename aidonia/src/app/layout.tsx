@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import AuthProvider from "@/components/AuthProvider";
+import ErrorBoundary from "@/components/Common/ErrorBoundary";
 import { Toaster } from "sonner";
 import fs from "fs";
 import path from "path";
@@ -48,7 +49,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </ErrorBoundary>
         <Toaster 
           position="top-right"
           richColors

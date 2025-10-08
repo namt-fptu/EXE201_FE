@@ -1,4 +1,5 @@
 import api from "./axios";
+import { handleApiResponse, handleApiError } from "@/utils/toast-helper";
 
 export interface User {
   id: number;
@@ -27,11 +28,16 @@ export interface User {
 
 export interface UpdateUserRequest {
   userName?: string;
-  email?: string;
-  password?: string;
-  phoneNumber?: string;
-  location?: string;
+  password?: string; // Single password field - current or new password
+  phoneNumber?: string;  
   residentId?: string;
+  // Only these 4 fields are allowed by the API
+}
+
+export interface UpdatePersonalInfoRequest {
+  userName?: string;
+  phoneNumber?: string;
+  // Email is excluded for security reasons
 }
 
 export interface ApiResponse<T> {
@@ -63,22 +69,57 @@ class UsersService {
     }
   }
 
-  // Update user
+  // Update user - only send the 4 allowed fields: userName, password, phoneNumber, residentId
   async update(id: number, data: UpdateUserRequest): Promise<ApiResponse<User>> {
     try {
+      // Only these 4 fields are allowed, any other field will cause error
       const updatePayload = {
         userName: data.userName || "",
-        email: data.email || "",
         password: data.password || "",
         phoneNumber: data.phoneNumber || "",
-        location: data.location || "",
         residentId: data.residentId || ""
       };
+      
+      console.log(`Calling PUT /api/users/${id} with payload:`, updatePayload);
       
       const response = await api.put(`/users/${id}`, updatePayload);
       return response.data;
     } catch (error) {
       console.error(`Error updating user ${id}:`, error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        const errorData = error.response.data;
+        if (errorData.message === "Old password incorrect") {
+          throw new Error("Current password is incorrect");
+        }
+      }
+      
+      throw error;
+    }
+  }
+
+  // Update personal information only (username and phone) using PATCH
+  async updatePersonalInfo(id: number, data: UpdatePersonalInfoRequest): Promise<ApiResponse<User>> {
+    try {
+      // Only send fields that can be updated
+      const updatePayload: any = {};
+      
+      if (data.userName !== undefined) {
+        updatePayload.userName = data.userName;
+      }
+      
+      if (data.phoneNumber !== undefined) {
+        updatePayload.phoneNumber = data.phoneNumber;
+      }
+      
+      console.log("Sending personal info update via PATCH:", updatePayload);
+      
+      // Try PATCH first for partial updates
+      const response = await api.patch(`/users/${id}`, updatePayload);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating personal info for user ${id}:`, error);
       throw error;
     }
   }
@@ -128,12 +169,23 @@ class UsersService {
         return user.id || null;
       }
       
-      // For testing purposes, return a default ID
-      // In production, this should decode JWT token
-      return 3; // Match the ID from your API documentation
+      // Try to decode from JWT token
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          // Decode JWT token to get user ID
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          return payload.userId || payload.id || payload.sub || null;
+        } catch (tokenError) {
+          console.error("Error decoding token:", tokenError);
+        }
+      }
+      
+      // No user ID found - return null instead of hardcoded value
+      return null;
     } catch (error) {
       console.error("Error getting current user ID:", error);
-      return 3; // Fallback to test ID
+      return null; // Return null instead of hardcoded fallback
     }
   }
 }

@@ -8,6 +8,7 @@ import Orders from "../Orders";
 import useUserStore from "@/redux/userStore";
 import { toast } from "sonner";
 import api from "@/services/axios";
+import { handleApiResponse, handleApiError, showLoadingToast, showSuccessToast, showErrorToast, showInfoToast, showWarningToast, MultiStepToastHandler } from "@/utils/toast-helper";
 
 const MyAccount = () => {
   const [activeTab, setActiveTab] = useState("orders");
@@ -21,31 +22,52 @@ const MyAccount = () => {
   const loadUserProfile = useCallback(async () => {
     if (!user?.id) {
       console.log("No user ID available:", user);
+      showInfoToast("Profile loading skipped", {
+        description: "No user ID available - please sign in again"
+      });
       return;
     }
 
     console.log("Loading user profile for user ID:", user.id);
+    
+    // Show loading toast for profile fetch
+    const loadingToast = showLoadingToast("Loading your profile...");
+    
     try {
       const response = await api.get(`users/${user.id}`);
       console.log("User profile response:", response.data);
+
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+
+      // Handle the API response comprehensively
+      handleApiResponse(response, {
+        successMessage: "Profile loaded successfully",
+        context: "load user profile",
+        showDataInfo: false
+      });
 
       if (response.data && response.data.data) {
         setUserProfile(response.data.data);
         console.log("User profile loaded successfully:", response.data.data);
       } else {
         console.error("Failed to load user profile - no data received");
-        toast.error("No user data received from server", {
-          duration: 3000,
+        showErrorToast("No user data received from server", {
+          description: "The server response was empty or invalid"
         });
       }
     } catch (error) {
       console.error("Error loading user profile:", error);
-      toast.error(
-        "Failed to load user profile. Please check if backend is running.",
-        {
-          duration: 4000,
-        }
-      );
+      
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+      
+      // Use comprehensive error handling
+      handleApiError(error, {
+        context: 'load user profile',
+        customMessage: "Failed to load user profile",
+        showDetails: true
+      });
     }
   }, [user]);
 
@@ -55,8 +77,8 @@ const MyAccount = () => {
       const isAuth = isAuthenticated();
 
       if (!isAuth) {
-        toast.error("Please sign in to access your account", {
-          duration: 3000,
+        showErrorToast("Authentication required", {
+          description: "Please sign in to access your account"
         });
         router.replace("/signin");
         return;
@@ -493,7 +515,7 @@ const MyAccount = () => {
                         id="userName"
                         placeholder="Username"
                         defaultValue={
-                          userProfile?.userName || user?.username || ""
+                          userProfile?.userName || user?.userName || ""
                         }
                         className="rounded-md border border-gray-3 bg-gray-1 placeholder:text-dark-5 w-full py-2.5 px-5 outline-none duration-200 focus:border-transparent focus:shadow-input focus:ring-2 focus:ring-blue/20"
                       />

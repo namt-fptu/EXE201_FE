@@ -66,7 +66,7 @@ export default function UserProfile() {
           <strong>ID:</strong> {user.id}
         </p>
         <p>
-          <strong>Username:</strong> {user.username}
+          <strong>Username:</strong> {user.userName || 'N/A'}
         </p>
         <p>
           <strong>Role:</strong> {user.role}

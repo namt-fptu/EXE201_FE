@@ -4,9 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:debug": "NODE_OPTIONS='--inspect' next dev --turbopack",
     "build": "next build --turbopack",
+    "build:analyze": "ANALYZE=true next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "perf:lighthouse": "lighthouse http://localhost:3000 --output-path=./lighthouse-report.html --save-assets",
+    "perf:bundle": "npm run build:analyze"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.9.0",
@@ -48,6 +52,7 @@
     "prettier": "^3.4.2",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "^3.4.16",
-    "typescript": "^5"
+    "typescript": "^5",
+    "webpack-bundle-analyzer": "^4.10.2"
   }
 }

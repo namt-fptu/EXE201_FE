@@ -1,17 +1,14 @@
-import Breadcrumb from "@/components/admin/Breadcrumbs/Breadcrumb";
+"use client";
 
-import type { Metadata } from "next";
+import Breadcrumb from "@/components/admin/Breadcrumbs/Breadcrumb";
+import AdminLayout from "@/components/admin/AdminLayout";
 import { ContactForm } from "./_components/contact-form";
 import { SignInForm } from "./_components/sign-in-form";
 import { SignUpForm } from "./_components/sign-up-form";
 
-export const metadata: Metadata = {
-  title: "Form Layout",
-};
-
 export default function Page() {
   return (
-    <>
+    <AdminLayout pageTitle="Form Layout">
       <Breadcrumb pageName="Form Layout" />
 
       <div className="grid grid-cols-1 gap-9 sm:grid-cols-2">
@@ -25,6 +22,6 @@ export default function Page() {
           <SignUpForm />
         </div>
       </div>
-    </>
+    </AdminLayout>
   );
 }

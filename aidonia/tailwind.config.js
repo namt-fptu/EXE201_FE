@@ -4,9 +4,16 @@ import defaultTheme from "tailwindcss/defaultTheme";
 const config = {
   content: [
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    // ✅ PERFORMANCE: More specific paths for faster scanning
+    "./src/components/**/*.{js,ts,jsx,tsx}",
+    "./src/app/**/*.{js,ts,jsx,tsx}",
+    // Add specific paths to avoid scanning unnecessary files
+    "!./src/**/*.{test,spec}.{js,ts,jsx,tsx}",
+    "!./node_modules/**/*"
   ],
+  
+  // ✅ PERFORMANCE: Enable JIT mode for faster builds
+  mode: 'jit',
   // darkMode disabled for admin
   theme: {
     fontFamily: {

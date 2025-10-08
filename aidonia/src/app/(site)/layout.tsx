@@ -1,8 +1,8 @@
 "use client";
-import "swiper/css";
-import "swiper/css/navigation";
-import "swiper/css/pagination";
-import { useState, useEffect } from "react";
+// ✅ PERFORMANCE: Move Swiper CSS to specific components instead of global
+// import "swiper/css";
+// import "swiper/css/navigation"; 
+// import "swiper/css/pagination";
 import "../css/style.css";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
@@ -16,44 +16,31 @@ import { PreviewSliderProvider } from "../context/PreviewSliderContext";
 import PreviewSliderModal from "@/components/Common/PreviewSlider";
 
 import ScrollToTop from "@/components/Common/ScrollToTop";
-import PreLoader from "@/components/Common/PreLoader";
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [loading, setLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    setTimeout(() => setLoading(false), 1000);
-  }, []);
-
   return (
     <html lang="en" suppressHydrationWarning={true}>
       <body>
-        {loading ? (
-          <PreLoader />
-        ) : (
-          <>
-            <AppProviders>
-              <CartModalProvider>
-                <ModalProvider>
-                  <PreviewSliderProvider>
-                    <Header />
-                    {children}
+        <AppProviders>
+          <CartModalProvider>
+            <ModalProvider>
+              <PreviewSliderProvider>
+                <Header />
+                {children}
 
-                    <QuickViewModal />
-                    <CartSidebarModal />
-                    <PreviewSliderModal />
-                  </PreviewSliderProvider>
-                </ModalProvider>
-              </CartModalProvider>
-            </AppProviders>
-            <ScrollToTop />
-            <Footer />
-          </>
-        )}
+                <QuickViewModal />
+                <CartSidebarModal />
+                <PreviewSliderModal />
+              </PreviewSliderProvider>
+            </ModalProvider>
+          </CartModalProvider>
+        </AppProviders>
+        <ScrollToTop />
+        <Footer />
       </body>
     </html>
   );

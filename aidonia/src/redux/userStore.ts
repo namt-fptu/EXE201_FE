@@ -13,6 +13,7 @@ interface User {
   mailVerified?: boolean;
   token?: string | null;
   refreshToken?: string | null;
+  residentId?: string; // Added for API compatibility
   // Additional fields for UI
   fullName?: string;
   bio?: string;
@@ -46,17 +47,46 @@ const useUserStore = create<UserState>((set, get) => ({
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
       
+      // ✅ CRITICAL: Clear cookies too for middleware
+      document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+      
       // Also clear any session storage
       sessionStorage.clear();
       
-      console.log("✅ UserStore: All authentication data cleared");
+      console.log("✅ UserStore: All authentication data cleared including cookies");
     }
   },
   isAuthenticated: () => {
     const { user } = get();
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    return !!(user && token);
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    
+    if (!user || !token) {
+      return false;
+    }
+
+    // Validate JWT token
+    try {
+      const tokenParts = token.split('.');
+      if (tokenParts.length !== 3) {
+        console.warn("Invalid JWT token format");
+        return false;
+      }
+
+      const payload = JSON.parse(atob(tokenParts[1]));
+      
+      // Check if token is expired
+      if (payload.exp && Date.now() >= payload.exp * 1000) {
+        console.warn("JWT token is expired");
+        // Auto-logout when token is expired
+        get().logout();
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error validating token:", error);
+      return false;
+    }
   },
   loadUserFromStorage: () => {
     if (typeof window !== "undefined") {

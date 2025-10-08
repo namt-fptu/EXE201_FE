@@ -1,8 +1,8 @@
 "use client";
 
-import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import useUserStore from "@/redux/userStore";
 import Link from "next/link";
 
 type PropsType = {
@@ -16,19 +16,23 @@ function AdminPageContent({
 }: {
   selectedTimeFrame?: string;
 }) {
-  const { isChecking, canAccess } = useAuthGuard("/signin", {
-    requireAuth: true,
-    requiredRoles: ["admin"],
-    message: "You do not have permission to access the admin page.",
-  });
-
   const router = useRouter();
+  const { user, isAuthenticated } = useUserStore();
+  const [isChecking, setIsChecking] = useState(true);
+  const [canAccess, setCanAccess] = useState(false);
 
   useEffect(() => {
-    if (!isChecking && !canAccess) {
-      router.replace("/signin");
-    }
-  }, [isChecking, canAccess, router]);
+    // Single check on mount
+    const timer = setTimeout(() => {
+      const ok = isAuthenticated() && user?.role?.toLowerCase() === 'admin';
+      setCanAccess(!!ok);
+      setIsChecking(false);
+      if (!ok) {
+        router.replace("/signin");
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [router, isAuthenticated, user]);
 
   if (isChecking) {
     return (

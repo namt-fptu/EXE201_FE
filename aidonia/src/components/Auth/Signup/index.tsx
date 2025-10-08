@@ -7,6 +7,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import useAuthGuard from "@/hooks/useAuthGuard";
+import { handleApiResponse, handleApiError, showLoadingToast, showSuccessToast, showErrorToast, MultiStepToastHandler } from "@/utils/toast-helper";
 
 const Signup = () => {
   const router = useRouter();
@@ -64,24 +65,24 @@ const Signup = () => {
 
     if (isSubmitting) return;
 
-    // Basic form validation
+    // Enhanced form validation with better error messages
     if (!formData.userName.trim()) {
-      toast.error("Please enter your full name", {
-        duration: 3000,
+      showErrorToast("Please enter your full name", {
+        description: "This field is required for account creation"
       });
       return;
     }
 
     if (!formData.email.trim()) {
-      toast.error("Please enter your email address", {
-        duration: 3000,
+      showErrorToast("Please enter your email address", {
+        description: "A valid email is required for account verification"
       });
       return;
     }
 
     if (!formData.password) {
-      toast.error("Please enter a password", {
-        duration: 3000,
+      showErrorToast("Please enter a password", {
+        description: "Password is required to secure your account"
       });
       return;
     }
@@ -89,20 +90,33 @@ const Signup = () => {
     if (formData.password !== formData.retypePassword) {
       console.error("Passwords do not match");
       setPasswordError("Passwords do not match");
+      showErrorToast("Passwords do not match", {
+        description: "Please make sure both password fields contain the same value"
+      });
       return;
     }
 
     // Validate ResidentId if provided (must be exactly 12 digits)
     if (formData.residentId && !/^\d{12}$/.test(formData.residentId)) {
-      toast.error("Resident ID must be exactly 12 digits", {
-        duration: 3000,
+      showErrorToast("Resident ID must be exactly 12 digits", {
+        description: "Please enter a valid Vietnamese resident ID"
       });
       return;
     }
 
     setIsSubmitting(true);
 
+    // Initialize multi-step toast handler for registration process
+    const toastHandler = new MultiStepToastHandler([
+      "Validating registration data...",
+      "Creating your account...",
+      "Setting up user profile...",
+      "Sending verification email..."
+    ]);
+
     try {
+      // Step 1: Validate registration data
+      toastHandler.startStep(0);
       const requestPayload = {
         UserName: formData.userName,
         Email: formData.email,
@@ -124,64 +138,66 @@ const Signup = () => {
       });
 
       console.log("Request payload (backend format):", requestPayload);
+      toastHandler.completeStep(0, "Registration data validated successfully");
 
+      // Step 2: Create account
+      toastHandler.startStep(1);
       const response = await api.post("users/register", requestPayload);
 
       console.log("Registration successful", response.data);
-      toast.success(
-        "Registration successful! Please check your email for verification and then sign in.",
-        {
-          duration: 4000,
-        }
+      toastHandler.completeStep(1, "Account created successfully!");
+
+      // Step 3: Account setup completed
+      toastHandler.startStep(2);
+      toastHandler.completeStep(2, "User profile configured");
+
+      // Step 4: Email verification
+      toastHandler.startStep(3);
+      toastHandler.completeStep(3, "Verification email sent!");
+
+      // Final success message
+      toastHandler.complete(
+        "Registration successful! Please check your email for verification."
       );
 
-      // Redirect to signin immediately since backend will handle email verification
+      // Redirect to signin
       setTimeout(() => {
         router.push("/signin");
       }, 2000);
     } catch (error) {
       console.error("Error during registration", error);
-      if (error.response) {
-        console.error("Server response status:", error.response.status);
-        console.error("Server response data:", error.response.data);
-        console.error("Server response headers:", error.response.headers);
+      toastHandler.cleanup();
 
-        // Handle different types of error responses
-        let errorMessage = "Registration failed. Please try again.";
+      // Use comprehensive error handling
+      handleApiError(error, {
+        context: 'register',
+        showDetails: true
+      });
 
-        if (error.response.data) {
-          if (typeof error.response.data === "string") {
-            errorMessage = error.response.data;
-          } else if (error.response.data.message) {
-            errorMessage = error.response.data.message;
-            // If it's "User registration failed", it's likely a duplicate field issue
-            if (error.response.data.message === "User registration failed") {
-              errorMessage =
-                "Registration failed. This username, email, or phone number might already be taken. Please try different credentials.";
-            }
-          } else if (error.response.data.error) {
-            errorMessage = error.response.data.error;
-          } else if (error.response.data.errors) {
-            // Handle validation errors array
-            const errors = error.response.data.errors;
-            if (Array.isArray(errors)) {
-              errorMessage = errors.join(", ");
-            } else if (typeof errors === "object") {
-              errorMessage = Object.values(errors).flat().join(", ");
-            }
-          }
-        }
-
-        toast.error(errorMessage, {
-          duration: 4000,
-        });
-      } else {
-        toast.error(
-          "Network error. Please check your connection and try again.",
+      // Special handling for common registration errors
+      if (error.response?.data?.message === "User registration failed") {
+        showErrorToast(
+          "Registration failed - credentials may already exist",
           {
-            duration: 4000,
+            description: "This username, email, or phone number might already be taken. Please try different credentials."
           }
         );
+      } else if (error.response?.data?.errors) {
+        // Handle ASP.NET Core validation errors
+        const errors = error.response.data.errors;
+        let errorMessages = [];
+        
+        if (Array.isArray(errors)) {
+          errorMessages = errors;
+        } else if (typeof errors === "object") {
+          errorMessages = Object.values(errors).flat();
+        }
+        
+        if (errorMessages.length > 0) {
+          showErrorToast("Validation errors occurred", {
+            description: errorMessages.join(", ")
+          });
+        }
       }
     } finally {
       setIsSubmitting(false);

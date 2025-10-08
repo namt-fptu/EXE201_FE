@@ -1,9 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 export default function AnalyticsPage() {
+  // ALL HOOKS MUST BE AT THE TOP LEVEL - before any conditional returns
   const [timeRange, setTimeRange] = useState('6m');
+  
+  // Protect route - require authentication and admin role
+  const { isChecking, canAccess } = useAuthGuard('/unauthorized', {
+    requireAuth: true,
+    requiredRoles: ['admin'],
+    message: 'You need admin privileges to access analytics.'
+  });
+
+  // Show loading while checking authorization
+  if (isChecking || !canAccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        <span className="ml-3 text-sm text-gray-600">
+          {isChecking ? "Checking permissions..." : "Access denied"}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

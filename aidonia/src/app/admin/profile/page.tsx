@@ -9,16 +9,26 @@ import { toast } from "sonner";
 import { CameraIcon } from "./_components/icons";
 import { SocialAccounts } from "./_components/social-accounts";
 import useUserStore from "@/redux/userStore";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 
 export default function Page() {
+  // ALL HOOKS MUST BE AT THE TOP LEVEL - before any conditional returns
   const { user, setUser } = useUserStore();
   const [data, setData] = useState({
     name: "",
     profilePhoto: "/images/user/user-03.png",
     coverPhoto: "/images/cover/cover-01.png",
   });
+  
+  // Protect route - require authentication and admin role
+  const { isChecking, canAccess } = useAuthGuard('/unauthorized', {
+    requireAuth: true,
+    requiredRoles: ['admin'],
+    message: 'You need admin privileges to access your profile.'
+  });
 
+  // Always call hooks before any conditional return
   useEffect(() => {
     if (user) {
       setData({
@@ -28,6 +38,18 @@ export default function Page() {
       });
     }
   }, [user]);
+
+  // Show loading while checking authorization
+  if (isChecking || !canAccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        <span className="ml-3 text-sm text-gray-600">
+          {isChecking ? "Checking permissions..." : "Access denied"}
+        </span>
+      </div>
+    );
+  }
 
   const handleChange = async (e: any) => {
     if (e.target.name === "profilePhoto" ) {
