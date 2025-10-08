@@ -19,7 +19,14 @@ const nextConfig: NextConfig = {
   // ✅ IMAGES: Optimize image handling
   images: {
     // Add image optimization domains if using external images
-    remotePatterns: [],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "firebasestorage.googleapis.com",
+        port: "",
+        pathname: "/**",
+      },
+    ],
     // Enable modern image formats
     formats: ['image/webp', 'image/avif'],
     // Optimize image sizes

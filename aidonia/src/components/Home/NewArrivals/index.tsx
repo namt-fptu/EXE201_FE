@@ -1,10 +1,224 @@
-import React from "react";
-import Image from "next/image";
+"use client";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import ProductItem from "@/components/Common/ProductItem";
-import shopData from "@/components/Shop/shopData";
+import api from "@/services/axios";
+import { Product } from "@/types/product";
+
+interface PostData {
+  id: number;
+  title: string;
+  description?: string;
+  price: number;
+  condition?: string;
+  categoryId?: number;
+  category?: { name?: string; categoryName?: string }; // Category object from API (some responses)
+  categoryName?: string; // Direct categoryName field (other responses)
+  postImages?: Array<string | { url: string }>; // Can be array of URLs or objects
+  createdAt: string;
+  status: string;
+  priority?: number;
+}
+
+// Extended Product type to match ProductItem expectations
+interface ExtendedProduct extends Product {
+  category?: string;
+  condition?: string;
+  description?: string;
+  createdAt?: string;
+}
 
 const NewArrival = () => {
+  const [posts, setPosts] = useState<ExtendedProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch posts from API
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setIsLoading(true);
+        console.log("Fetching posts from /api/posts");
+
+        const response = await api.get("posts");
+        console.log("Posts API response:", response.data);
+
+        let postsData: PostData[] = [];
+
+        // Handle different response structures
+        if (response.data && response.data.data) {
+          postsData = Array.isArray(response.data.data)
+            ? response.data.data
+            : [response.data.data];
+        } else if (response.data && Array.isArray(response.data)) {
+          postsData = response.data;
+        }
+
+        console.log("=== POSTS DEBUG INFO ===");
+        console.log("Raw posts data:", postsData);
+        console.log("Posts count before filtering:", postsData.length);
+
+        // Show all unique status values to understand what's available
+        const statusValues = Array.from(
+          new Set(postsData.map((post) => post.status))
+        );
+        console.log("All unique status values found:", statusValues);
+
+        // Show a sample of posts with their status
+        postsData.slice(0, 3).forEach((post) => {
+          console.log(
+            `Sample post ${post.id}: title="${post.title}", status="${post.status}"`
+          );
+        });
+
+        // Transform posts to ExtendedProduct format for ProductItem component
+        const transformedPosts: ExtendedProduct[] = postsData
+          .filter((post) => {
+            const isValidStatus =
+              post.status === "Approved" || post.status === "approved";
+            console.log(
+              `Post ${post.id} status: "${post.status}", valid: ${isValidStatus}`
+            );
+            return isValidStatus;
+          }) // Show approved and pending posts
+          .slice(0, 8) // Limit to 8 posts for new arrivals
+          .map((post) => ({
+            id: post.id,
+            title: post.title,
+            price: post.price || 0,
+            discountedPrice: post.price || 0, // Use same price for now, can be enhanced later
+            reviews: 0, // Default value, can be enhanced with actual reviews
+            imgs: {
+              thumbnails: post.postImages?.map((img) => {
+                const url = typeof img === "string" ? img : img.url;
+                console.log(`Processing image for post ${post.id}:`, url);
+                return url;
+              }) || ["/images/products/product-1-bg-1.png"],
+              previews: post.postImages?.map((img) => {
+                const url = typeof img === "string" ? img : img.url;
+                console.log(`Processing preview for post ${post.id}:`, url);
+                return url;
+              }) || ["/images/products/product-1-bg-1.png"],
+            },
+            // Additional fields for posts
+            category:
+              post.categoryName || // Direct categoryName field
+              post.category?.name ||
+              post.category?.categoryName ||
+              (typeof post.category === "string"
+                ? post.category
+                : "Uncategorized"),
+            condition: post.condition || "Not specified",
+            description: post.description || "",
+            createdAt: post.createdAt,
+          }));
+
+        console.log(
+          "Posts after filtering for 'Approved/Pending':",
+          transformedPosts.length
+        );
+        console.log("Transformed posts:", transformedPosts);
+
+        // If no approved/pending posts found, let's try showing any posts for debugging
+        if (transformedPosts.length === 0 && postsData.length > 0) {
+          console.log(
+            "⚠️ No approved/pending posts found! Showing first few posts with any status for debugging:"
+          );
+          const debugPosts: ExtendedProduct[] = postsData
+            .slice(0, 4) // Show first 4 posts regardless of status
+            .map((post) => ({
+              id: post.id,
+              title: `[${post.status}] ${post.title}`, // Show status in title for debugging
+              price: post.price || 0,
+              discountedPrice: post.price || 0,
+              reviews: 0,
+              imgs: {
+                thumbnails: post.postImages?.map((img) =>
+                  typeof img === "string" ? img : img.url
+                ) || ["/images/products/product-1-bg-1.png"],
+                previews: post.postImages?.map((img) =>
+                  typeof img === "string" ? img : img.url
+                ) || ["/images/products/product-1-bg-1.png"],
+              },
+              // Additional fields for posts
+              category:
+                post.categoryName || // Direct categoryName field
+                post.category?.name ||
+                post.category?.categoryName ||
+                (typeof post.category === "string"
+                  ? post.category
+                  : "Uncategorized"),
+              condition: post.condition || "Not specified",
+              description: post.description || "",
+              createdAt: post.createdAt,
+            }));
+
+          console.log("Debug posts (any status):", debugPosts);
+          setPosts(debugPosts);
+          console.log("=== END POSTS DEBUG (showing debug posts) ===");
+        } else {
+          setPosts(transformedPosts);
+          console.log("=== END POSTS DEBUG ===");
+        }
+        setError(null);
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+        setError("Failed to load posts");
+        // Fallback to empty array on error
+        setPosts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-7.5 gap-y-9">
+          {[...Array(8)].map((_, index) => (
+            <div key={index} className="animate-pulse">
+              <div className="bg-gray-200 h-48 rounded-lg mb-3"></div>
+              <div className="h-4 bg-gray-200 rounded mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue text-white rounded-md hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+
+    if (posts.length === 0) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-gray-500">No posts available at the moment.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-7.5 gap-y-9">
+        {posts.map((item, key) => (
+          <ProductItem item={item} key={key} />
+        ))}
+      </div>
+    );
+  };
   return (
     <section className="overflow-hidden pt-15">
       <div className="max-w-[1170px] w-full mx-auto px-4 sm:px-8 xl:px-0">
@@ -42,16 +256,11 @@ const NewArrival = () => {
             href="/shop-with-sidebar"
             className="inline-flex font-medium text-custom-sm py-2.5 px-7 rounded-md border-gray-3 border bg-gray-1 text-dark ease-out duration-200 hover:bg-dark hover:text-white hover:border-transparent"
           >
-            View All
+            View All Posts
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-7.5 gap-y-9">
-          {/* <!-- New Arrivals item --> */}
-          {shopData.map((item, key) => (
-            <ProductItem item={item} key={key} />
-          ))}
-        </div>
+        {renderContent()}
       </div>
     </section>
   );

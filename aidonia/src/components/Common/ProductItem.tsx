@@ -11,10 +11,96 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/redux/store";
 import Link from "next/link";
 
-const ProductItem = ({ item }: { item: Product }) => {
+// Extended Product type to include post-specific fields
+interface ExtendedProduct extends Product {
+  category?: string;
+  condition?: string;
+  description?: string;
+  createdAt?: string;
+}
+
+const ProductItem = ({ item }: { item: ExtendedProduct }) => {
   const { openModal } = useModalContext();
 
   const dispatch = useDispatch<AppDispatch>();
+
+  // Format upload time to relative time
+  const formatUploadTime = (dateString?: string) => {
+    if (!dateString) return "Unknown time";
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+    );
+
+    if (diffInHours < 1) return "Just now";
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)}w ago`;
+
+    return date.toLocaleDateString();
+  };
+
+  // Get the first image URL, prioritizing Firebase URLs over placeholders
+  const getImageUrl = () => {
+    console.log(`ProductItem ${item.id} - Processing images:`, item.imgs);
+
+    if (item.imgs?.previews && item.imgs.previews.length > 0) {
+      const firstImage = item.imgs.previews[0];
+      console.log(
+        `ProductItem ${item.id} - First image:`,
+        firstImage,
+        typeof firstImage
+      );
+
+      // Validate URL before returning it
+      const isValidUrl = (url: string): boolean => {
+        if (!url || typeof url !== "string") {
+          console.log(
+            `ProductItem ${item.id} - Invalid URL (empty or not string):`,
+            url
+          );
+          return false;
+        }
+
+        // Check if it's a relative path
+        if (url.startsWith("/") || url.startsWith("./")) {
+          console.log(`ProductItem ${item.id} - Valid relative path:`, url);
+          return true;
+        }
+
+        // Check if it's a valid absolute URL
+        try {
+          new URL(url);
+          console.log(`ProductItem ${item.id} - Valid absolute URL:`, url);
+          return true;
+        } catch (error) {
+          console.log(
+            `ProductItem ${item.id} - Invalid absolute URL:`,
+            url,
+            error
+          );
+          return false;
+        }
+      };
+
+      const finalUrl =
+        firstImage &&
+        firstImage !== "/images/products/product-1-bg-1.png" &&
+        isValidUrl(firstImage)
+          ? firstImage
+          : "/images/products/product-1-bg-1.png";
+
+      console.log(`ProductItem ${item.id} - Final URL:`, finalUrl);
+      return finalUrl;
+    }
+
+    console.log(`ProductItem ${item.id} - No previews, using placeholder`);
+    return "/images/products/product-1-bg-1.png";
+  };
 
   // update the QuickView state
   const handleQuickViewUpdate = () => {
@@ -48,7 +134,24 @@ const ProductItem = ({ item }: { item: Product }) => {
   return (
     <div className="group">
       <div className="relative overflow-hidden flex items-center justify-center rounded-lg bg-[#F6F7FB] min-h-[270px] mb-4">
-        <Image src={item.imgs.previews[0]} alt="" width={250} height={250} />
+        <Image
+          src={getImageUrl()}
+          alt={item.title || "Product image"}
+          width={250}
+          height={250}
+          className="object-cover w-full h-full"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = "/images/products/product-1-bg-1.png";
+          }}
+        />
+
+        {/* Category badge instead of sale badge */}
+        {item.category && (
+          <div className="absolute top-3 left-3 bg-blue text-white px-2 py-1 rounded text-xs font-medium">
+            {item.category}
+          </div>
+        )}
 
         <div className="absolute left-0 bottom-0 translate-y-full w-full flex items-center justify-center gap-2.5 pb-5 ease-linear duration-200 group-hover:translate-y-0">
           <button
@@ -84,13 +187,6 @@ const ProductItem = ({ item }: { item: Product }) => {
           </button>
 
           <button
-            onClick={() => handleAddToCart()}
-            className="inline-flex font-medium text-custom-sm py-[7px] px-5 rounded-[5px] bg-blue text-white ease-out duration-200 hover:bg-blue-dark"
-          >
-            Add to cart
-          </button>
-
-          <button
             onClick={() => handleItemToWishList()}
             aria-label="button for favorite select"
             id="favOne"
@@ -115,41 +211,44 @@ const ProductItem = ({ item }: { item: Product }) => {
         </div>
       </div>
 
-      <div className="flex items-center gap-2.5 mb-2">
-        <div className="flex items-center gap-1">
-          <Image
-            src="/images/icons/icon-star.svg"
-            alt="star icon"
-            width={14}
-            height={14}
-          />
-          <Image
-            src="/images/icons/icon-star.svg"
-            alt="star icon"
-            width={14}
-            height={14}
-          />
-          <Image
-            src="/images/icons/icon-star.svg"
-            alt="star icon"
-            width={14}
-            height={14}
-          />
-          <Image
-            src="/images/icons/icon-star.svg"
-            alt="star icon"
-            width={14}
-            height={14}
-          />
-          <Image
-            src="/images/icons/icon-star.svg"
-            alt="star icon"
-            width={14}
-            height={14}
-          />
-        </div>
+      <div className="flex items-center justify-between gap-2.5 mb-2">
+        {/* Condition */}
+        {item.condition && (
+          <div className="flex items-center gap-1">
+            <svg
+              className="w-4 h-4 text-green-500"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span className="text-sm font-medium text-green-600">
+              {item.condition}
+            </span>
+          </div>
+        )}
 
-        <p className="text-custom-sm">({item.reviews})</p>
+        {/* Upload time */}
+        <div className="flex items-center gap-1">
+          <svg
+            className="w-4 h-4 text-gray-400"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <span className="text-sm text-gray-500">
+            {formatUploadTime(item.createdAt)}
+          </span>
+        </div>
       </div>
 
       <h3
@@ -159,9 +258,33 @@ const ProductItem = ({ item }: { item: Product }) => {
         <Link href="/shop-details"> {item.title} </Link>
       </h3>
 
+      {/* Description */}
+      {item.description && (
+        <p
+          className="text-sm text-gray-600 mb-2 overflow-hidden"
+          style={{
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical" as const,
+          }}
+        >
+          {item.description}
+        </p>
+      )}
+
       <span className="flex items-center gap-2 font-medium text-lg">
-        <span className="text-dark">${item.discountedPrice}</span>
-        <span className="text-dark-4 line-through">${item.price}</span>
+        <span className="text-dark">
+          {typeof item.discountedPrice === "number"
+            ? item.discountedPrice.toLocaleString("vi-VN") + " VND"
+            : item.discountedPrice}
+        </span>
+        {item.price !== item.discountedPrice && (
+          <span className="text-dark-4 line-through">
+            {typeof item.price === "number"
+              ? item.price.toLocaleString("vi-VN") + " VND"
+              : item.price}
+          </span>
+        )}
       </span>
     </div>
   );

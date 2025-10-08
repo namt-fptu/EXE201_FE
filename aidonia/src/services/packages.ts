@@ -37,25 +37,35 @@ export const packagesService = {
   },
 
   // Create new package
-  create: async (packageData: CreatePackageRequest): Promise<PackageResponse> => {
+  create: async (
+    packageData: CreatePackageRequest
+  ): Promise<PackageResponse> => {
     const response = await api.post<PackageResponse>("/packages", packageData);
     return response.data;
   },
 
   // Update package
-  update: async (id: number, packageData: CreatePackageRequest): Promise<PackageResponse> => {
+  update: async (
+    id: number,
+    packageData: CreatePackageRequest
+  ): Promise<PackageResponse> => {
     if (id === undefined || id === null) {
-      throw new Error('Package ID is required for update');
+      throw new Error("Package ID is required for update");
     }
     console.log(`Updating package ${id} with data:`, packageData);
-    const response = await api.put<PackageResponse>(`/packages/${id}`, packageData);
+    const response = await api.put<PackageResponse>(
+      `/packages/${id}`,
+      packageData
+    );
     return response.data;
   },
 
   // Delete package
-  delete: async (id: number): Promise<{ isSuccess: boolean; message: string }> => {
+  delete: async (
+    id: number
+  ): Promise<{ isSuccess: boolean; message: string }> => {
     if (id === undefined || id === null) {
-      throw new Error('Package ID is required for delete');
+      throw new Error("Package ID is required for delete");
     }
     console.log(`Deleting package ${id}`);
     const response = await api.delete(`/packages/${id}`);

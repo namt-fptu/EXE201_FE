@@ -129,10 +129,26 @@ function AdminPageContent({
           <h3 className="text-lg font-bold text-primary-700 mb-4">Recent Activity</h3>
           <div className="space-y-4">
             {[
-              { action: "New user registered", time: "2 minutes ago", type: "user" },
-              { action: "Package purchased", time: "15 minutes ago", type: "package" },
-              { action: "System backup completed", time: "1 hour ago", type: "system" },
-              { action: "New support ticket", time: "2 hours ago", type: "support" },
+              {
+                action: "New user registered",
+                time: "2 minutes ago",
+                type: "user",
+              },
+              {
+                action: "Package purchased",
+                time: "15 minutes ago",
+                type: "package",
+              },
+              {
+                action: "System backup completed",
+                time: "1 hour ago",
+                type: "system",
+              },
+              {
+                action: "New support ticket",
+                time: "2 hours ago",
+                type: "support",
+              },
             ].map((activity, index) => (
               <div key={index} className="flex items-center gap-4 p-3 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors duration-200">
                 <div className={`p-2 rounded-lg ${

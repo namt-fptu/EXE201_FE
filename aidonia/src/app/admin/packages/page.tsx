@@ -8,7 +8,8 @@ export default function AdminPackagesPage() {
   const { isChecking, canAccess } = useAuthGuard("/signin", {
     requireAuth: true,
     requiredRoles: ["admin"],
-    message: "You do not have permission to access the packages management page.",
+    message:
+      "You do not have permission to access the packages management page.",
   });
 
   // Show loading while checking authentication

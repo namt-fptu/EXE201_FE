@@ -4,17 +4,34 @@ import { useRouter } from "next/navigation";
 import Breadcrumb from "../Common/Breadcrumb";
 import Image from "next/image";
 import AddressModal from "./AddressModal";
-import Orders from "../Orders";
 import useUserStore from "@/redux/userStore";
 import { toast } from "sonner";
 import api from "@/services/axios";
+import { AxiosError } from "axios";
+import packageService from "@/services/packageService";
 import { handleApiResponse, handleApiError, showLoadingToast, showSuccessToast, showErrorToast, showInfoToast, showWarningToast, MultiStepToastHandler } from "@/utils/toast-helper";
 
+interface Post {
+  id: string;
+  title: string;
+  description?: string;
+  category?: string;
+  status: string;
+  createdAt: string;
+  images?: Array<{ url: string } | string>;
+}
+
 const MyAccount = () => {
-  const [activeTab, setActiveTab] = useState("orders");
+  const [activeTab, setActiveTab] = useState("posts");
   const [addressModal, setAddressModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
+  const [userPackages, setUserPackages] = useState([]);
+  const [packagesLoading, setPackagesLoading] = useState(false);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   const { user, isAuthenticated } = useUserStore();
   const router = useRouter();
@@ -71,6 +88,285 @@ const MyAccount = () => {
     }
   }, [user]);
 
+  const loadUserPackages = useCallback(async () => {
+    if (!user?.id) {
+      console.log("No user ID available for packages:", user);
+      return;
+    }
+
+    setPackagesLoading(true);
+    try {
+      // First get the user's active packages
+      const response = await api.get(`user_packages/package/active/${user.id}`);
+      console.log("User packages response:", response.data);
+      console.log(
+        "User packages response structure:",
+        JSON.stringify(response.data, null, 2)
+      );
+
+      // Handle different possible response structures
+      if (response.data) {
+        // Check if data is nested in a data property or is the direct array
+        const packageData = response.data.data || response.data;
+
+        if (Array.isArray(packageData) && packageData.length > 0) {
+          // For each package, fetch detailed information
+          const detailedPackages = await Promise.all(
+            packageData.map(async (userPkg) => {
+              try {
+                console.log("Processing user package:", userPkg);
+
+                // Check if we already have all the needed information
+                const hasBasicInfo =
+                  userPkg.packageName &&
+                  userPkg.price !== undefined &&
+                  userPkg.postLimit !== undefined;
+                const hasPackageInfo =
+                  userPkg.package && userPkg.package.packageName;
+
+                if (hasBasicInfo || hasPackageInfo) {
+                  console.log("Using existing package data, skipping API call");
+                  // Use existing data without making additional API call
+                  return {
+                    ...userPkg,
+                    packageName:
+                      userPkg.packageName ||
+                      userPkg.package?.packageName ||
+                      "Unknown Package",
+                    price: userPkg.price || userPkg.package?.price || 0,
+                    postLimit:
+                      userPkg.postLimit || userPkg.package?.postLimit || 0,
+                    durationInDays:
+                      userPkg.durationInDays ||
+                      userPkg.package?.durationInDays ||
+                      0,
+                    usedPosts:
+                      (userPkg.postLimit || userPkg.package?.postLimit || 0) -
+                      (userPkg.remainingPosts || 0),
+                  };
+                }
+
+                // Determine the correct package ID to use for API call
+                const packageId =
+                  userPkg.packageId || userPkg.package?.id || userPkg.id;
+                console.log(
+                  "Using package ID:",
+                  packageId,
+                  "for user package:",
+                  userPkg.id
+                );
+
+                if (!packageId) {
+                  console.warn(
+                    "No valid package ID found for user package:",
+                    userPkg
+                  );
+                  return {
+                    ...userPkg,
+                    packageName: "Unknown Package",
+                    price: 0,
+                    postLimit: 0,
+                    durationInDays: 0,
+                    usedPosts: 0,
+                  };
+                }
+
+                // Get detailed package info from packages/{id} endpoint
+                const detailResponse = await api.get(`packages/${packageId}`);
+                const packageDetails =
+                  detailResponse.data?.data || detailResponse.data;
+
+                // Combine user package data with detailed package info
+                return {
+                  ...userPkg,
+                  packageName:
+                    packageDetails?.packageName ||
+                    userPkg.packageName ||
+                    userPkg.package?.packageName ||
+                    "Unknown Package",
+                  price:
+                    packageDetails?.price ||
+                    userPkg.price ||
+                    userPkg.package?.price ||
+                    0,
+                  postLimit:
+                    packageDetails?.postLimit ||
+                    userPkg.postLimit ||
+                    userPkg.package?.postLimit ||
+                    0,
+                  durationInDays:
+                    packageDetails?.durationInDays ||
+                    userPkg.durationInDays ||
+                    userPkg.package?.durationInDays ||
+                    0,
+                  // Calculate used posts from remaining posts
+                  usedPosts:
+                    packageDetails?.postLimit ||
+                    userPkg.postLimit ||
+                    userPkg.package?.postLimit ||
+                    0
+                      ? (packageDetails?.postLimit ||
+                          userPkg.postLimit ||
+                          userPkg.package?.postLimit ||
+                          0) - (userPkg.remainingPosts || 0)
+                      : 0,
+                };
+              } catch (detailError) {
+                const packageId =
+                  userPkg.packageId || userPkg.package?.id || userPkg.id;
+                console.error(
+                  `Error fetching details for package ID ${packageId} (user package ${userPkg.id}):`,
+                  detailError
+                );
+
+                if (detailError instanceof AxiosError) {
+                  if (detailError.response?.status === 400) {
+                    console.error(
+                      "400 Bad Request - Invalid package ID or API endpoint"
+                    );
+                    console.error("Package data structure:", userPkg);
+                    console.error("Response data:", detailError.response?.data);
+                  } else if (detailError.response?.status === 404) {
+                    console.error("404 Not Found - Package details not found");
+                  } else if (detailError.response?.status === 500) {
+                    console.error("500 Server Error - Backend issue");
+                  }
+                }
+
+                // Return enhanced original data if details fetch fails
+                return {
+                  ...userPkg,
+                  packageName:
+                    userPkg.packageName ||
+                    userPkg.package?.packageName ||
+                    "Unknown Package",
+                  price: userPkg.price || userPkg.package?.price || 0,
+                  postLimit:
+                    userPkg.postLimit || userPkg.package?.postLimit || 0,
+                  durationInDays:
+                    userPkg.durationInDays ||
+                    userPkg.package?.durationInDays ||
+                    0,
+                  usedPosts:
+                    (userPkg.postLimit || userPkg.package?.postLimit || 0) -
+                    (userPkg.remainingPosts || 0),
+                };
+              }
+            })
+          );
+
+          setUserPackages(detailedPackages);
+          console.log(
+            "User packages with details loaded successfully:",
+            detailedPackages
+          );
+        } else {
+          setUserPackages([]);
+          console.log("No packages found - data is not an array or empty");
+        }
+      } else {
+        setUserPackages([]);
+        console.log("No packages found for user");
+      }
+    } catch (error) {
+      console.error("Error loading user packages:", error);
+      setUserPackages([]);
+      // Don't show error toast for packages as it's not critical
+    } finally {
+      setPackagesLoading(false);
+    }
+  }, [user]);
+
+  const loadUserPosts = useCallback(async () => {
+    if (!user?.id) {
+      console.log("No user ID available for posts:", user);
+      return;
+    }
+
+    setPostsLoading(true);
+    try {
+      const response = await api.get(`posts/user/${user.id}`);
+      console.log("User posts response:", response.data);
+
+      // Handle different possible response structures
+      if (response.data) {
+        // Check if data is nested in a data property or is the direct array
+        const postsData = response.data.data || response.data;
+
+        if (Array.isArray(postsData)) {
+          setUserPosts(postsData);
+          console.log("User posts loaded successfully:", postsData);
+        } else {
+          setUserPosts([]);
+          console.log("No posts found - data is not an array");
+        }
+      } else {
+        setUserPosts([]);
+        console.log("No posts found for user");
+      }
+    } catch (error) {
+      console.error("Error loading user posts:", error);
+      setUserPosts([]);
+      if (error instanceof AxiosError) {
+        if (error.response?.status === 404) {
+          console.log("No posts found (404) - user has no posts yet");
+        } else if (error.response?.status === 500) {
+          toast.error("Server error while loading posts");
+        } else {
+          toast.error("Failed to load posts");
+        }
+      }
+    } finally {
+      setPostsLoading(false);
+    }
+  }, [user]);
+
+  const loadPaymentHistory = useCallback(async () => {
+    if (!user?.id) {
+      console.log("No user ID available for payment history:", user);
+      return;
+    }
+
+    setHistoryLoading(true);
+    try {
+      const response = await api.get(`payments/users/${user.id}`);
+      console.log("Payment history response:", response.data);
+
+      // Handle different possible response structures
+      if (response.data) {
+        // Check if data is nested in a data property or is the direct array
+        const historyData = response.data.data || response.data;
+
+        if (
+          historyData &&
+          historyData.items &&
+          Array.isArray(historyData.items)
+        ) {
+          setPaymentHistory(historyData.items);
+          console.log(
+            "Payment history loaded successfully:",
+            historyData.items
+          );
+        } else if (Array.isArray(historyData)) {
+          setPaymentHistory(historyData);
+          console.log("Payment history loaded successfully:", historyData);
+        } else {
+          setPaymentHistory([]);
+          console.log("No payment history found - data is not an array");
+        }
+      } else {
+        setPaymentHistory([]);
+        console.log("No payment history found for user");
+      }
+    } catch (error) {
+      console.error("Error loading payment history:", error);
+      setPaymentHistory([]);
+      // Don't show error toast for payment history as it's not critical
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     // Wait a bit for AuthProvider to finish loading user data
     const timer = setTimeout(() => {
@@ -86,10 +382,20 @@ const MyAccount = () => {
 
       setIsLoading(false);
       loadUserProfile(); // Load user profile data
+      loadUserPackages(); // Load user packages data
+      loadPaymentHistory(); // Load payment history data
+      loadUserPosts(); // Load user posts data
     }, 500); // Increased delay to let AuthProvider finish
 
     return () => clearTimeout(timer);
-  }, [isAuthenticated, router, loadUserProfile]);
+  }, [
+    isAuthenticated,
+    router,
+    loadUserProfile,
+    loadUserPackages,
+    loadPaymentHistory,
+    loadUserPosts,
+  ]);
 
   // Show loading while checking authentication
   if (isLoading) {
@@ -125,29 +431,44 @@ const MyAccount = () => {
             <div className="xl:max-w-[370px] w-full bg-white rounded-xl shadow-1">
               <div className="flex xl:flex-col">
                 <div className="hidden lg:flex flex-wrap items-center gap-5 py-6 px-4 sm:px-7.5 xl:px-9 border-r xl:border-r-0 xl:border-b border-gray-3">
-                  <div className="max-w-[64px] w-full h-16 rounded-full overflow-hidden">
-                    <Image
-                      src="/images/users/user-04.jpg"
-                      alt="user"
-                      width={64}
-                      height={64}
-                    />
+                  <div className="max-w-[64px] w-full h-16 rounded-full overflow-hidden border border-gray-3">
+                    {user?.avataImage ? (
+                      <Image
+                        src={user.avataImage}
+                        alt="user"
+                        width={64}
+                        height={64}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-blue flex items-center justify-center">
+                        <span className="text-white font-semibold text-xl">
+                          {(userProfile?.userName || user?.userName || "U")
+                            .charAt(0)
+                            .toUpperCase()}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div>
                     <p className="font-medium text-dark mb-0.5">
-                      James Septimus
+                      {userProfile?.userName || user?.userName || "User"}
                     </p>
-                    <p className="text-custom-xs">Member Since Sep 2020</p>
+                    <p className="text-custom-xs">
+                      {userProfile?.createdAt
+                        ? `Member Since ${new Date(userProfile.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
+                        : "Member Since Recently"}
+                    </p>
                   </div>
                 </div>
 
                 <div className="p-4 sm:p-7.5 xl:p-9">
                   <div className="flex flex-wrap xl:flex-nowrap xl:flex-col gap-4">
                     <button
-                      onClick={() => setActiveTab("orders")}
+                      onClick={() => setActiveTab("posts")}
                       className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${
-                        activeTab === "orders"
+                        activeTab === "posts"
                           ? "text-white bg-blue"
                           : "text-dark-2 bg-gray-1"
                       }`}
@@ -179,7 +500,41 @@ const MyAccount = () => {
                           fill=""
                         />
                       </svg>
-                      Orders
+                      Posts
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab("packages")}
+                      className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${
+                        activeTab === "packages"
+                          ? "text-white bg-blue"
+                          : "text-dark-2 bg-gray-1"
+                      }`}
+                    >
+                      <svg
+                        className="fill-current"
+                        width="22"
+                        height="22"
+                        viewBox="0 0 22 22"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          clipRule="evenodd"
+                          d="M11.0007 1.83331C11.3516 1.83331 11.6678 2.03544 11.8041 2.35281L13.9708 6.68614H18.3341C18.5767 6.68614 18.8031 6.81031 18.9349 7.01831C19.0666 7.22631 19.0858 7.48781 18.9866 7.71448L16.8200 11.9141C16.7425 12.0895 16.5941 12.2245 16.4116 12.2828C16.2291 12.3411 16.0308 12.3166 15.8666 12.2166L11.0007 9.16664L6.1349 12.2166C5.97073 12.3166 5.77239 12.3411 5.58989 12.2828C5.40739 12.2245 5.25906 12.0895 5.18156 11.9141L3.01489 7.71448C2.91572 7.48781 2.93489 7.22631 3.06656 7.01831C3.19823 6.81031 3.42489 6.68614 3.66739 6.68614H8.03073L10.1974 2.35281C10.3337 2.03544 10.6499 1.83331 11.0007 1.83331ZM11.0007 4.51664L9.46406 7.51664C9.32773 7.83398 9.01156 8.03614 8.66739 8.03614H5.53406L6.91823 10.8641L10.4582 8.76414C10.6341 8.65581 10.8674 8.65581 11.0432 8.76414L14.5832 10.8641L15.9674 8.03614H12.8341C12.4899 8.03614 12.1737 7.83398 12.0374 7.51664L10.5007 4.51664Z"
+                          fill=""
+                        />
+                        <path
+                          d="M11.0007 13.7499C10.6224 13.7499 10.3132 14.0591 10.3132 14.4374V19.2499C10.3132 19.6282 10.6224 19.9374 11.0007 19.9374C11.379 19.9374 11.6882 19.6282 11.6882 19.2499V14.4374C11.6882 14.0591 11.379 13.7499 11.0007 13.7499Z"
+                          fill=""
+                        />
+                        <path
+                          d="M7.5632 15.8124C7.18491 15.8124 6.87574 16.1216 6.87574 16.4999C6.87574 16.8782 7.18491 17.1874 7.5632 17.1874H14.4382C14.8165 17.1874 15.1257 16.8782 15.1257 16.4999C15.1257 16.1216 14.8165 15.8124 14.4382 15.8124H7.5632Z"
+                          fill=""
+                        />
+                      </svg>
+                      Packages
                     </button>
 
                     <button
@@ -245,6 +600,36 @@ const MyAccount = () => {
                     </button>
 
                     <button
+                      onClick={() => setActiveTab("history")}
+                      className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${
+                        activeTab === "history"
+                          ? "text-white bg-blue"
+                          : "text-dark-2 bg-gray-1"
+                      }`}
+                    >
+                      <svg
+                        className="fill-current"
+                        width="22"
+                        height="22"
+                        viewBox="0 0 22 22"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M12.8333 1.83331C12.8333 1.45361 12.5258 1.14581 12.1458 1.14581C11.7661 1.14581 11.4583 1.45361 11.4583 1.83331V10.9999L11.4583 11.0416H11.5L16.1733 15.715C16.4416 15.9833 16.8784 15.9833 17.1467 15.715C17.415 15.4467 17.415 15.0099 17.1467 14.7416L12.8333 10.4282V1.83331Z"
+                          fill=""
+                        />
+                        <path
+                          fillRule="evenodd"
+                          clipRule="evenodd"
+                          d="M11 2.74998C6.17805 2.74998 2.28125 6.64678 2.28125 11.4687C2.28125 16.2907 6.17805 20.1875 11 20.1875C15.822 20.1875 19.7187 16.2907 19.7187 11.4687C19.7187 10.0161 19.3734 8.64586 18.7552 7.43748C18.5869 7.09373 18.1767 6.97436 17.833 7.14269C17.4892 7.31103 17.3699 7.72123 17.5382 8.06498C18.0689 9.08873 18.3437 10.2499 18.3437 11.4687C18.3437 15.5315 15.0628 18.8125 11 18.8125C6.93723 18.8125 3.65625 15.5315 3.65625 11.4687C3.65625 7.40598 6.93723 4.12498 11 4.12498C12.2188 4.12498 13.3799 4.39978 14.4037 4.93048C14.7474 5.09881 15.1576 4.97944 15.326 4.63569C15.4943 4.29194 15.3749 3.88173 15.0312 3.7134C13.8228 3.09519 12.4525 2.74998 11 2.74998Z"
+                          fill=""
+                        />
+                      </svg>
+                      History
+                    </button>
+
+                    <button
                       onClick={() => setActiveTab("logout")}
                       className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${
                         activeTab === "logout"
@@ -279,15 +664,402 @@ const MyAccount = () => {
 
             
           <!--== user dashboard content start ==--> */}
-            {/* <!-- orders tab content start --> */}
+            {/* <!-- posts tab content start --> */}
             <div
               className={`xl:max-w-[770px] w-full bg-white rounded-xl shadow-1 ${
-                activeTab === "orders" ? "block" : "hidden"
+                activeTab === "posts" ? "block" : "hidden"
               }`}
             >
-              <Orders />
+              <div className="p-4 sm:p-7.5 xl:p-9">
+                <h3 className="text-xl font-semibold mb-6">My Posts</h3>
+
+                {postsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue"></div>
+                  </div>
+                ) : userPosts.length > 0 ? (
+                  <div className="space-y-4">
+                    {userPosts.map((post: Post) => (
+                      <div
+                        key={post.id}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <h4 className="font-semibold text-lg text-dark">
+                            {post.title}
+                          </h4>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs ${
+                              post.status === "active"
+                                ? "bg-green-100 text-green-800"
+                                : post.status === "pending"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {post.status}
+                          </span>
+                        </div>
+
+                        {post.description && (
+                          <p className="text-gray-600 mb-3 line-clamp-2">
+                            {post.description}
+                          </p>
+                        )}
+
+                        <div className="flex items-center justify-between text-sm text-gray-500">
+                          <span>
+                            Category: {post.category || "Uncategorized"}
+                          </span>
+                          <span>
+                            Created:{" "}
+                            {new Date(post.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        {post.images && post.images.length > 0 && (
+                          <div className="flex gap-2 mt-3">
+                            {post.images
+                              .slice(0, 3)
+                              .map(
+                                (
+                                  image: { url: string } | string,
+                                  index: number
+                                ) => (
+                                  <div
+                                    key={index}
+                                    className="w-16 h-16 relative"
+                                  >
+                                    <Image
+                                      src={
+                                        typeof image === "string"
+                                          ? image
+                                          : image.url
+                                      }
+                                      alt={`Post image ${index + 1}`}
+                                      fill
+                                      className="rounded object-cover"
+                                    />
+                                  </div>
+                                )
+                              )}
+                            {post.images.length > 3 && (
+                              <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-600">
+                                +{post.images.length - 3}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-gray-400 mb-4">
+                      <svg
+                        className="w-16 h-16 mx-auto"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No posts yet
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      You haven&apos;t created any posts yet.
+                    </p>
+                    <button
+                      onClick={() => (window.location.href = "/create-post")}
+                      className="px-4 py-2 bg-blue text-white rounded-md hover:bg-blue-600 transition-colors"
+                    >
+                      Create Your First Post
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-            {/* <!-- orders tab content end -->
+            {/* <!-- posts tab content end -->
+
+          <!-- packages tab content start --> */}
+            <div
+              className={`xl:max-w-[770px] w-full bg-white rounded-xl shadow-1 ${
+                activeTab === "packages" ? "block" : "hidden"
+              }`}
+            >
+              <div className="p-4 sm:p-8.5">
+                <div className="flex items-center justify-between mb-7">
+                  <h2 className="font-medium text-xl text-dark">My Packages</h2>
+                  <button
+                    onClick={() => {
+                      console.log("Manual reload packages");
+                      loadUserPackages();
+                    }}
+                    className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    Debug Reload
+                  </button>
+                </div>
+
+                {/* Package List */}
+                <div className="space-y-4">
+                  {packagesLoading ? (
+                    // Loading State
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue"></div>
+                    </div>
+                  ) : userPackages.length > 0 ? (
+                    // Packages List
+                    userPackages.map((pkg, index) => {
+                      // Use the status from API response
+                      const isActive = pkg.status?.toLowerCase() === "active";
+
+                      return (
+                        <div
+                          key={pkg.id || index}
+                          className="border border-gray-3 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <h3 className="font-medium text-dark text-lg mb-1">
+                                {pkg.packageName || "Package"}
+                              </h3>
+                              <p className="text-gray-500 text-sm mb-2">
+                                Remaining posts: {pkg.remainingPosts || 0}/
+                                {pkg.postLimit || 0}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <span
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                  isActive
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {pkg.status || "Unknown"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Progress Bar for Posts */}
+                          <div className="mb-4">
+                            <div className="flex justify-between text-xs text-gray-500 mb-1">
+                              <span>Posts Used</span>
+                              <span>
+                                {pkg.usedPosts || 0} of {pkg.postLimit || 0}
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue h-2 rounded-full transition-all duration-300"
+                                style={{
+                                  width:
+                                    pkg.postLimit > 0
+                                      ? `${((pkg.usedPosts || 0) / pkg.postLimit) * 100}%`
+                                      : "0%",
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-500">Price:</span>
+                              <p className="font-medium text-blue">
+                                $
+                                {pkg.price
+                                  ? (pkg.price / 100).toFixed(2)
+                                  : "0.00"}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Duration:</span>
+                              <p className="font-medium">
+                                {pkg.durationInDays || 0} days
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Package ID:</span>
+                              <p className="font-medium">#{pkg.id || "N/A"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    // No Packages State
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                        <svg
+                          className="w-8 h-8 text-gray-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                          />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No packages purchased yet
+                      </h3>
+                      <p className="text-gray-500 mb-4">
+                        Browse our packages to get started with premium
+                        features.
+                      </p>
+                      <button className="inline-flex items-center px-4 py-2 bg-blue text-white rounded-md hover:bg-blue-dark transition-colors">
+                        Browse Packages
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* <!-- packages tab content end -->
+
+          <!-- history tab content start --> */}
+            <div
+              className={`xl:max-w-[770px] w-full bg-white rounded-xl shadow-1 ${
+                activeTab === "history" ? "block" : "hidden"
+              }`}
+            >
+              <div className="p-4 sm:p-8.5">
+                <div className="flex items-center justify-between mb-7">
+                  <h2 className="font-medium text-xl text-dark">
+                    Payment History
+                  </h2>
+                </div>
+
+                {/* Payment History List */}
+                <div className="space-y-4">
+                  {historyLoading ? (
+                    // Loading State
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue"></div>
+                    </div>
+                  ) : paymentHistory.length > 0 ? (
+                    // Payment History List
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b border-gray-3">
+                            <th className="text-left py-3 px-4 font-medium text-dark">
+                              Date
+                            </th>
+                            <th className="text-left py-3 px-4 font-medium text-dark">
+                              Package
+                            </th>
+                            <th className="text-left py-3 px-4 font-medium text-dark">
+                              Amount
+                            </th>
+                            <th className="text-left py-3 px-4 font-medium text-dark">
+                              Payment ID
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paymentHistory.map((payment, index) => (
+                            <tr
+                              key={payment.id || index}
+                              className="border-b border-gray-2 hover:bg-gray-1 transition-colors"
+                            >
+                              <td className="py-4 px-4">
+                                <div>
+                                  <p className="font-medium text-dark text-sm">
+                                    {payment.paidAt
+                                      ? new Date(
+                                          payment.paidAt
+                                        ).toLocaleDateString("en-US", {
+                                          year: "numeric",
+                                          month: "short",
+                                          day: "numeric",
+                                        })
+                                      : "N/A"}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {payment.paidAt
+                                      ? new Date(
+                                          payment.paidAt
+                                        ).toLocaleTimeString("en-US", {
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })
+                                      : ""}
+                                  </p>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div>
+                                  <p className="font-medium text-dark text-sm">
+                                    {payment.packageName || "Unknown Package"}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Package ID: #{payment.packageId || "N/A"}
+                                  </p>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <p className="font-medium text-blue text-sm">
+                                  $
+                                  {payment.amount
+                                    ? (payment.amount / 100).toFixed(2)
+                                    : "0.00"}
+                                </p>
+                              </td>
+                              <td className="py-4 px-4">
+                                <p className="font-mono text-xs text-gray-600">
+                                  #{payment.id || "N/A"}
+                                </p>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    // No Payment History State
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                        <svg
+                          className="w-8 h-8 text-gray-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No payment history found
+                      </h3>
+                      <p className="text-gray-500 mb-4">
+                        Your payment transactions will appear here once you make
+                        your first purchase.
+                      </p>
+                      <button className="inline-flex items-center px-4 py-2 bg-blue text-white rounded-md hover:bg-blue-dark transition-colors">
+                        Browse Packages
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* <!-- history tab content end -->
 
           <!-- addresses tab content start --> */}
             <div
@@ -347,7 +1119,7 @@ const MyAccount = () => {
                           fill=""
                         />
                       </svg>
-                      Name: James Septimus
+                      Name: {userProfile?.userName || user?.userName || "User"}
                     </p>
 
                     <p className="flex items-center gap-2.5 text-custom-sm">
@@ -366,7 +1138,7 @@ const MyAccount = () => {
                           fill=""
                         />
                       </svg>
-                      Email: jamse@example.com
+                      Email: {userProfile?.email || "No email provided"}
                     </p>
                   </div>
 
@@ -394,7 +1166,8 @@ const MyAccount = () => {
                             fill=""
                           />
                         </svg>
-                        Name: James Septimus
+                        Name:{" "}
+                        {userProfile?.userName || user?.userName || "User"}
                       </p>
 
                       <p className="flex items-center gap-2.5 text-custom-sm">
@@ -413,7 +1186,7 @@ const MyAccount = () => {
                             fill=""
                           />
                         </svg>
-                        Email: jamse@example.com
+                        Email: {userProfile?.email || "No email provided"}
                       </p>
 
                       <p className="flex items-center gap-2.5 text-custom-sm">

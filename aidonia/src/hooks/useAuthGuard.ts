@@ -3,7 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import useUserStore from "@/redux/userStore";
 import { toast } from "sonner";
-import { normalizeRole, getRedirectPathByRole, hasRequiredRole } from "@/utils/auth-helpers";
+import {
+  normalizeRole,
+  getRedirectPathByRole,
+  hasRequiredRole,
+} from "@/utils/auth-helpers";
 
 export const useAuthGuard = (
   redirectTo: string = "/",
@@ -14,7 +18,7 @@ export const useAuthGuard = (
     useRoleBasedRedirect?: boolean; // Allow role-based redirect for auth pages
   }
 ) => {
-  const { isAuthenticated, user } = useUserStore(); // Access user from store
+  const { isAuthenticated, user, loadUserFromStorage } = useUserStore();
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
   const [canAccess, setCanAccess] = useState(false);
@@ -27,6 +31,11 @@ export const useAuthGuard = (
     requiredRoles,
     useRoleBasedRedirect = false,
   } = options || {};
+
+  useEffect(() => {
+    // Load user from storage first
+    loadUserFromStorage();
+  }, [loadUserFromStorage]);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -65,13 +74,13 @@ export const useAuthGuard = (
       // For auth pages (requireAuth: false or undefined) - redirect if already authenticated
       if (!requireAuth && isAuth && user) {
         let targetRedirect = redirectTo;
-        
+
         // Use role-based redirect if option is enabled
         if (useRoleBasedRedirect) {
           const normalizedRole = normalizeRole(user.role);
           targetRedirect = getRedirectPathByRole(normalizedRole);
         }
-        
+
         if (!didRedirectRef.current) {
           didRedirectRef.current = true;
           toast.info(message || "You are already signed in!", {
@@ -89,7 +98,16 @@ export const useAuthGuard = (
     };
 
     checkAuth();
-  }, [isAuthenticated, user, router, redirectTo, requireAuth, message, useRoleBasedRedirect, JSON.stringify(requiredRoles)]);
+  }, [
+    isAuthenticated,
+    user,
+    router,
+    redirectTo,
+    requireAuth,
+    message,
+    useRoleBasedRedirect,
+    JSON.stringify(requiredRoles),
+  ]);
 
   return { isChecking, canAccess };
 };

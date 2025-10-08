@@ -1,36 +1,27 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import CustomSelect from "./CustomSelect";
 import { menuData } from "./menuData";
 import Dropdown from "./Dropdown";
-import { useAppSelector } from "@/redux/store";
-import { useSelector } from "react-redux";
-import { selectTotalPrice } from "@/redux/features/cart-slice";
-import { useCartModalContext } from "@/app/context/CartSidebarModalContext";
 import Image from "next/image";
 import useUserStore from "@/redux/userStore";
 import { useClickOutside } from "@/hooks/use-click-outside";
+import api from "@/services/axios";
 
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [navigationOpen, setNavigationOpen] = useState(false);
   const [stickyMenu, setStickyMenu] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
-  const { openCartModal } = useCartModalContext();
-
-  const product = useAppSelector((state) => state.cartReducer.items);
-  const totalPrice = useSelector(selectTotalPrice);
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const { user, isAuthenticated, logout } = useUserStore();
 
   // Click outside handler for user dropdown
   const userDropdownRef = useClickOutside<HTMLDivElement>(() => {
     setUserDropdown(false);
   });
-
-  const handleOpenCartModal = () => {
-    openCartModal();
-  };
 
   // Sticky menu
   const handleStickyMenu = () => {
@@ -41,20 +32,88 @@ const Header = () => {
     }
   };
 
+  // Load categories from API
+  const loadCategories = useCallback(async () => {
+    setCategoriesLoading(true);
+    try {
+      const response = await api.get("categories");
+      console.log("Categories response:", response.data);
+
+      // Handle different possible response structures
+      if (response.data) {
+        const categoryData = response.data.data || response.data;
+
+        if (Array.isArray(categoryData)) {
+          // Transform API categories to options format
+          const categoryOptions = [
+            { label: "All Categories", value: "0" }, // Keep "All Categories" as first option
+            ...categoryData.map((category) => ({
+              label:
+                category.name || category.categoryName || "Unknown Category",
+              value:
+                category.id?.toString() ||
+                category.categoryId?.toString() ||
+                "0",
+            })),
+          ];
+          setCategories(categoryOptions);
+          console.log("Categories loaded successfully:", categoryOptions);
+        } else {
+          console.error("Categories data is not an array:", categoryData);
+          // Fallback to hardcoded categories if API fails
+          setCategories([
+            { label: "All Categories", value: "0" },
+            { label: "Desktop", value: "1" },
+            { label: "Laptop", value: "2" },
+            { label: "Monitor", value: "3" },
+            { label: "Phone", value: "4" },
+            { label: "Watch", value: "5" },
+            { label: "Mouse", value: "6" },
+            { label: "Tablet", value: "7" },
+          ]);
+        }
+      } else {
+        console.error("No categories data received");
+        // Fallback to hardcoded categories
+        setCategories([
+          { label: "All Categories", value: "0" },
+          { label: "Desktop", value: "1" },
+          { label: "Laptop", value: "2" },
+          { label: "Monitor", value: "3" },
+          { label: "Phone", value: "4" },
+          { label: "Watch", value: "5" },
+          { label: "Mouse", value: "6" },
+          { label: "Tablet", value: "7" },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error loading categories:", error);
+      // Fallback to hardcoded categories on error
+      setCategories([
+        { label: "All Categories", value: "0" },
+        { label: "Desktop", value: "1" },
+        { label: "Laptop", value: "2" },
+        { label: "Monitor", value: "3" },
+        { label: "Phone", value: "4" },
+        { label: "Watch", value: "5" },
+        { label: "Mouse", value: "6" },
+        { label: "Tablet", value: "7" },
+      ]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     window.addEventListener("scroll", handleStickyMenu);
-  });
+    loadCategories(); // Load categories when component mounts
+  }, [loadCategories]);
 
-  const options = [
-    { label: "All Categories", value: "0" },
-    { label: "Desktop", value: "1" },
-    { label: "Laptop", value: "2" },
-    { label: "Monitor", value: "3" },
-    { label: "Phone", value: "4" },
-    { label: "Watch", value: "5" },
-    { label: "Mouse", value: "6" },
-    { label: "Tablet", value: "7" },
-  ];
+  // Use categories from state, fallback to empty array if still loading
+  const options =
+    categories.length > 0
+      ? categories
+      : [{ label: "All Categories", value: "0" }];
 
   return (
     <header
@@ -228,11 +287,11 @@ const Header = () => {
                             My Account
                           </Link>
                           <Link
-                            href="/my-account"
+                            href="/create-post"
                             className="block px-4 py-2 text-sm text-dark hover:bg-gray-1 transition-colors"
                             onClick={() => setUserDropdown(false)}
                           >
-                            Orders
+                            Upload a Post
                           </Link>
                           <Link
                             href="/wishlist"
@@ -290,56 +349,44 @@ const Header = () => {
                   </Link>
                 )}
 
-                <button
-                  onClick={handleOpenCartModal}
-                  className="flex items-center gap-2.5"
-                >
-                  <span className="inline-block relative">
-                    <svg
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M15.5433 9.5172C15.829 9.21725 15.8174 8.74252 15.5174 8.45686C15.2175 8.17119 14.7428 8.18277 14.4571 8.48272L12.1431 10.9125L11.5433 10.2827C11.2576 9.98277 10.7829 9.97119 10.483 10.2569C10.183 10.5425 10.1714 11.0173 10.4571 11.3172L11.6 12.5172C11.7415 12.6658 11.9378 12.75 12.1431 12.75C12.3483 12.75 12.5446 12.6658 12.6862 12.5172L15.5433 9.5172Z"
-                        fill="#3C50E0"
-                      />
-                      <path
-                        fillRule="evenodd"
-                        clipRule="evenodd"
-                        d="M1.29266 2.7512C1.43005 2.36044 1.8582 2.15503 2.24896 2.29242L2.55036 2.39838C3.16689 2.61511 3.69052 2.79919 4.10261 3.00139C4.54324 3.21759 4.92109 3.48393 5.20527 3.89979C5.48725 4.31243 5.60367 4.76515 5.6574 5.26153C5.66124 5.29706 5.6648 5.33321 5.66809 5.36996L17.1203 5.36996C17.9389 5.36995 18.7735 5.36993 19.4606 5.44674C19.8103 5.48584 20.1569 5.54814 20.4634 5.65583C20.7639 5.76141 21.0942 5.93432 21.3292 6.23974C21.711 6.73613 21.7777 7.31414 21.7416 7.90034C21.7071 8.45845 21.5686 9.15234 21.4039 9.97723L21.3935 10.0295L21.3925 10.0341L20.8836 12.5033C20.7339 13.2298 20.6079 13.841 20.4455 14.3231C20.2731 14.8346 20.0341 15.2842 19.6076 15.6318C19.1811 15.9793 18.6925 16.1226 18.1568 16.1882C17.6518 16.25 17.0278 16.25 16.2862 16.25L10.8804 16.25C9.53464 16.25 8.44479 16.25 7.58656 16.1283C6.69032 16.0012 5.93752 15.7285 5.34366 15.1022C4.79742 14.526 4.50529 13.9144 4.35897 13.0601C4.22191 12.2598 4.20828 11.2125 4.20828 9.75996V7.03832C4.20828 6.29837 4.20726 5.80316 4.16611 5.42295C4.12678 5.0596 4.05708 4.87818 3.96682 4.74609C3.87876 4.61723 3.74509 4.4968 3.44186 4.34802C3.11902 4.18961 2.68026 4.03406 2.01266 3.79934L1.75145 3.7075C1.36068 3.57012 1.15527 3.14197 1.29266 2.7512ZM5.70828 6.86996L5.70828 9.75996C5.70828 11.249 5.72628 12.1578 5.83744 12.8068C5.93933 13.4018 6.11202 13.7324 6.43219 14.0701C6.70473 14.3576 7.08235 14.5418 7.79716 14.6432C8.53783 14.7482 9.5209 14.75 10.9377 14.75H16.2406C17.0399 14.75 17.5714 14.7487 17.9746 14.6993C18.3573 14.6525 18.5348 14.571 18.66 14.469C18.7853 14.3669 18.9009 14.2095 19.024 13.8441C19.1537 13.4592 19.2623 12.9389 19.4237 12.156L19.9225 9.73591L19.9229 9.73369C20.1005 8.84376 20.217 8.2515 20.2444 7.80793C20.2704 7.38648 20.2043 7.23927 20.1429 7.15786C20.1367 7.15259 20.0931 7.11565 19.9661 7.07101C19.8107 7.01639 19.5895 6.97049 19.2939 6.93745C18.6991 6.87096 17.9454 6.86996 17.089 6.86996H5.70828Z"
-                        fill="#3C50E0"
-                      />
-                      <path
-                        fillRule="evenodd"
-                        clipRule="evenodd"
-                        d="M5.2502 19.5C5.2502 20.7426 6.25756 21.75 7.5002 21.75C8.74285 21.75 9.7502 20.7426 9.7502 19.5C9.7502 18.2573 8.74285 17.25 7.5002 17.25C6.25756 17.25 5.2502 18.2573 5.2502 19.5ZM7.5002 20.25C7.08599 20.25 6.7502 19.9142 6.7502 19.5C6.7502 19.0857 7.08599 18.75 7.5002 18.75C7.91442 18.75 8.2502 19.0857 8.2502 19.5C8.2502 19.9142 7.91442 20.25 7.5002 20.25Z"
-                        fill="#3C50E0"
-                      />
-                      <path
-                        fillRule="evenodd"
-                        clipRule="evenodd"
-                        d="M14.25 19.5001C14.25 20.7427 15.2574 21.7501 16.5 21.7501C17.7426 21.7501 18.75 20.7427 18.75 19.5001C18.75 18.2574 17.7426 17.2501 16.5 17.2501C15.2574 17.2501 14.25 18.2574 14.25 19.5001ZM16.5 20.2501C16.0858 20.2501 15.75 19.9143 15.75 19.5001C15.75 19.0859 16.0858 18.7501 16.5 18.7501C16.9142 18.7501 17.25 19.0859 17.25 19.5001C17.25 19.9143 16.9142 20.2501 16.5 20.2501Z"
-                        fill="#3C50E0"
-                      />
-                    </svg>
+                {/* Wishlist button - only show when user is signed in */}
+                {isAuthenticated() && user && (
+                  <Link href="/wishlist" className="flex items-center gap-2.5">
+                    <span className="inline-block relative">
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          clipRule="evenodd"
+                          d="M12 6.00019C10.2006 3.90317 7.19377 3.2551 4.93923 5.17534C2.68468 7.09558 2.36727 10.3061 4.13778 12.5772C5.60984 14.4654 10.0648 18.4479 11.5249 19.7369C11.6882 19.8811 11.7699 19.9532 11.8652 19.9815C11.9483 20.0062 12.0393 20.0062 12.1225 19.9815C12.2178 19.9532 12.2994 19.8811 12.4628 19.7369C13.9229 18.4479 18.3778 14.4654 19.8499 12.5772C21.6204 10.3061 21.3417 7.07538 19.0484 5.17534C16.7551 3.2753 13.7994 3.90317 12 6.00019Z"
+                          stroke="#3C50E0"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
 
-                    <span className="flex items-center justify-center font-medium text-2xs absolute -right-2 -top-2.5 bg-blue w-4.5 h-4.5 rounded-full text-white">
-                      {product.length}
+                      {/* You can add a counter here if you have wishlist items count */}
+                      {/* <span className="flex items-center justify-center font-medium text-2xs absolute -right-2 -top-2.5 bg-blue w-4.5 h-4.5 rounded-full text-white">
+                        {wishlistCount}
+                      </span> */}
                     </span>
-                  </span>
 
-                  <div>
-                    <span className="block text-2xs text-dark-4 uppercase">
-                      cart
-                    </span>
-                    <p className="font-medium text-custom-sm text-dark">
-                      ${totalPrice}
-                    </p>
-                  </div>
-                </button>
+                    <div>
+                      <span className="block text-2xs text-dark-4 uppercase">
+                        wishlist
+                      </span>
+                      <p className="font-medium text-custom-sm text-dark">
+                        My Favorites
+                      </p>
+                    </div>
+                  </Link>
+                )}
               </div>
 
               {/* <!-- Hamburger Toggle BTN --> */}
@@ -458,28 +505,6 @@ const Header = () => {
                     </svg>
                     Recently Viewed
                   </a>
-                </li>
-
-                <li className="py-4">
-                  <Link
-                    href="/wishlist"
-                    className="flex items-center gap-1.5 font-medium text-custom-sm text-dark hover:text-blue"
-                  >
-                    <svg
-                      className="fill-current"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M5.97441 12.6073L6.43872 12.0183L5.97441 12.6073ZM7.99992 3.66709L7.45955 4.18719C7.60094 4.33408 7.79604 4.41709 7.99992 4.41709C8.2038 4.41709 8.3989 4.33408 8.54028 4.18719L7.99992 3.66709ZM10.0254 12.6073L10.4897 13.1962L10.0254 12.6073ZM6.43872 12.0183C5.41345 11.21 4.33627 10.4524 3.47904 9.48717C2.64752 8.55085 2.08325 7.47831 2.08325 6.0914H0.583252C0.583252 7.94644 1.3588 9.35867 2.35747 10.4832C3.33043 11.5788 4.57383 12.4582 5.51009 13.1962L6.43872 12.0183ZM2.08325 6.0914C2.08325 4.75102 2.84027 3.63995 3.85342 3.17683C4.81929 2.73533 6.15155 2.82823 7.45955 4.18719L8.54028 3.14699C6.84839 1.38917 4.84732 1.07324 3.22983 1.8126C1.65962 2.53035 0.583252 4.18982 0.583252 6.0914H2.08325ZM5.51009 13.1962C5.84928 13.4636 6.22932 13.7618 6.61834 13.9891C7.00711 14.2163 7.47619 14.4167 7.99992 14.4167V12.9167C7.85698 12.9167 7.65939 12.8601 7.37512 12.694C7.0911 12.5281 6.79171 12.2965 6.43872 12.0183L5.51009 13.1962ZM10.4897 13.1962C11.426 12.4582 12.6694 11.5788 13.6424 10.4832C14.641 9.35867 15.4166 7.94644 15.4166 6.0914H13.9166C13.9166 7.47831 13.3523 8.55085 12.5208 9.48717C11.6636 10.4524 10.5864 11.21 9.56112 12.0183L10.4897 13.1962ZM15.4166 6.0914C15.4166 4.18982 14.3402 2.53035 12.77 1.8126C11.1525 1.07324 9.15145 1.38917 7.45955 3.14699L8.54028 4.18719C9.84828 2.82823 11.1805 2.73533 12.1464 3.17683C13.1596 3.63995 13.9166 4.75102 13.9166 6.0914H15.4166ZM9.56112 12.0183C9.20813 12.2965 8.90874 12.5281 8.62471 12.694C8.34044 12.8601 8.14285 12.9167 7.99992 12.9167V14.4167C8.52365 14.4167 8.99273 14.2163 9.3815 13.9891C9.77052 13.7618 10.1506 13.4636 10.4897 13.1962L9.56112 12.0183Z"
-                        fill=""
-                      />
-                    </svg>
-                    Wishlist
-                  </Link>
                 </li>
               </ul>
             </div>
