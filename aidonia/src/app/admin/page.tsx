@@ -248,6 +248,23 @@ function AdminPageContent({
             </Link>
 
             <Link
+              href="/admin/categories"
+              className="block w-full p-3 text-left hover:bg-purple-50 rounded-lg transition-colors duration-200 border border-transparent hover:border-purple-200"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <svg className="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Quản lý danh mục</p>
+                  <p className="text-sm font-medium text-purple-600">Tạo và quản lý danh mục</p>
+                </div>
+              </div>
+            </Link>
+
+            <Link
               href="/admin/analytics"
               className="block w-full p-3 text-left hover:bg-accent-50 rounded-lg transition-colors duration-200 border border-transparent hover:border-accent-200"
             >

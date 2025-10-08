@@ -18,9 +18,7 @@ export default function SettingsPage() {
           <div className="col-span-5 xl:col-span-3">
             <PersonalInfoForm />
           </div>
-          <div className="col-span-5 xl:col-span-2">
-            <UploadPhotoForm />
-          </div>
+
         </div>
       </div>
     </AdminLayout>

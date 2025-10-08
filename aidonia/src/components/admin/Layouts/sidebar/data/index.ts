@@ -39,6 +39,13 @@ export const NAV_DATA = [
       },
       
       {
+        title: "Categories",
+        url: "/admin/categories",
+        icon: Icons.Table,
+        items: [],
+      },
+      
+      {
         title: "Post Approval",
         url: "/admin/post-approval",
         icon: Icons.Settings,
