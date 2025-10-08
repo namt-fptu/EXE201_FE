@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import useUserStore from "@/redux/userStore";
 import Link from "next/link";
+import { dashboardService } from "@/services/dashboard";
 
 type PropsType = {
   searchParams: Promise<{
@@ -20,6 +21,8 @@ function AdminPageContent({
   const { user, isAuthenticated } = useUserStore();
   const [isChecking, setIsChecking] = useState(true);
   const [canAccess, setCanAccess] = useState(false);
+  const [totalUsers, setTotalUsers] = useState<number>(0);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => {
     // Single check on mount
@@ -33,6 +36,32 @@ function AdminPageContent({
     }, 50);
     return () => clearTimeout(timer);
   }, [router, isAuthenticated, user]);
+
+  // Load dashboard stats
+  useEffect(() => {
+    const loadStats = async () => {
+      if (canAccess && !isChecking) {
+        try {
+          setIsLoadingStats(true);
+          const response = await dashboardService.getTotalUsers();
+          
+          if (response.isSuccess) {
+            setTotalUsers(response.data);
+          } else {
+            console.error('Failed to load total users:', response.message);
+            setTotalUsers(0);
+          }
+        } catch (error) {
+          console.error('Error loading dashboard stats:', error);
+          setTotalUsers(0);
+        } finally {
+          setIsLoadingStats(false);
+        }
+      }
+    };
+
+    loadStats();
+  }, [canAccess, isChecking]);
 
   if (isChecking) {
     return (
@@ -65,8 +94,14 @@ function AdminPageContent({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-primary-600">Total Users</p>
-              <p className="text-2xl font-bold text-slate-900">12,584</p>
-              <p className="text-sm font-semibold text-accent-600">+12.5% from last month</p>
+              {isLoadingStats ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600"></div>
+                  <p className="text-xl font-bold text-slate-900">Loading...</p>
+                </div>
+              ) : (
+                <p className="text-2xl font-bold text-slate-900">{totalUsers.toLocaleString()}</p>
+              )}
             </div>
             <div className="p-3 bg-primary-100 rounded-lg">
               <svg className="w-6 h-6 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
@@ -191,6 +226,23 @@ function AdminPageContent({
                 <div>
                   <p className="font-semibold text-slate-900">Manage Packages</p>
                   <p className="text-sm font-medium text-primary-600">Create and edit packages</p>
+                </div>
+              </div>
+            </Link>
+
+            <Link
+              href="/admin/post-approval"
+              className="block w-full p-3 text-left hover:bg-yellow-50 rounded-lg transition-colors duration-200 border border-transparent hover:border-yellow-200"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <svg className="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Duyệt bài đăng</p>
+                  <p className="text-sm font-medium text-yellow-600">Quản lý và duyệt bài đăng</p>
                 </div>
               </div>
             </Link>

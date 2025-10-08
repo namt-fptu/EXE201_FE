@@ -32,16 +32,16 @@ export const NAV_DATA = [
     label: "MANAGEMENT", 
     items: [      
       {
-        title: "Calendar",
-        url: "/admin/calendar",
-        icon: Icons.Calendar,
-      },
-      
-      {
         title: "Packages",
         url: "/admin/packages",
         icon: Icons.Package,
         items: [],
+      },
+      
+      {
+        title: "Post Approval",
+        url: "/admin/post-approval",
+        icon: Icons.Settings,
       },
       
     ],
