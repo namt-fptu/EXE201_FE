@@ -4,6 +4,7 @@
  */
 
 import { toast } from "sonner";
+import { toastDeduplicator } from "./toast-deduplicator";
 
 export interface ApiResponse<T = any> {
   isSuccess?: boolean;
@@ -26,6 +27,12 @@ export const showSuccessToast = (
   message: string, 
   config: ToastConfig = {}
 ) => {
+  if (!toastDeduplicator.canShowToast(message, 'success')) {
+    return;
+  }
+  
+  toastDeduplicator.markToastActive(message, 'success');
+  
   toast.success(message, {
     duration: config.duration || 4000,
     description: config.description,
@@ -34,6 +41,12 @@ export const showSuccessToast = (
       backgroundColor: "#f0fdf4",
       borderColor: "#bbf7d0",
       color: "#166534"
+    },
+    onDismiss: () => {
+      toastDeduplicator.markToastCompleted(message, 'success');
+    },
+    onAutoClose: () => {
+      toastDeduplicator.markToastCompleted(message, 'success');
     }
   });
 };
@@ -45,6 +58,12 @@ export const showErrorToast = (
   message: string, 
   config: ToastConfig = {}
 ) => {
+  if (!toastDeduplicator.canShowToast(message, 'error')) {
+    return;
+  }
+  
+  toastDeduplicator.markToastActive(message, 'error');
+  
   toast.error(message, {
     duration: config.duration || 5000,
     description: config.description,
@@ -53,6 +72,12 @@ export const showErrorToast = (
       backgroundColor: "#fef2f2",
       borderColor: "#fecaca",
       color: "#991b1b"
+    },
+    onDismiss: () => {
+      toastDeduplicator.markToastCompleted(message, 'error');
+    },
+    onAutoClose: () => {
+      toastDeduplicator.markToastCompleted(message, 'error');
     }
   });
 };
@@ -364,17 +389,22 @@ function getDefaultInfoMessage(context?: string): string {
  */
 export class MultiStepToastHandler {
   private currentStepToast: string | number | null = null;
+  private allToastIds: (string | number)[] = [];
   private steps: string[] = [];
   private currentStep = 0;
+  private isCompleted = false;
 
   constructor(steps: string[]) {
     this.steps = steps;
   }
 
   startStep(stepIndex: number): void {
+    if (this.isCompleted) return; // Prevent operations after completion
+    
     this.currentStep = stepIndex;
     const message = this.steps[stepIndex] || `Step ${stepIndex + 1}`;
     
+    // Dismiss current toast only
     if (this.currentStepToast) {
       toast.dismiss(this.currentStepToast);
     }
@@ -382,41 +412,72 @@ export class MultiStepToastHandler {
     this.currentStepToast = showLoadingToast(message, {
       description: `Step ${stepIndex + 1} of ${this.steps.length}`
     });
+    
+    if (this.currentStepToast) {
+      this.allToastIds.push(this.currentStepToast);
+    }
   }
 
   completeStep(stepIndex: number, successMessage?: string): void {
+    if (this.isCompleted) return; // Prevent operations after completion
+    
     if (this.currentStepToast) {
       toast.dismiss(this.currentStepToast);
       this.currentStepToast = null;
     }
     
-    const message = successMessage || `${this.steps[stepIndex]} completed`;
-    showSuccessToast(message, { duration: 2000 });
+    // Only show brief success for intermediate steps, not final completion
+    if (stepIndex < this.steps.length - 1) {
+      const message = successMessage || `${this.steps[stepIndex]} completed`;
+      showSuccessToast(message, { duration: 1500 });
+    }
   }
 
   failStep(stepIndex: number, errorMessage?: string): void {
-    if (this.currentStepToast) {
-      toast.dismiss(this.currentStepToast);
-      this.currentStepToast = null;
-    }
+    this.isCompleted = true; // Mark as completed to prevent further operations
+    
+    // Dismiss all previous toasts
+    this.cleanup();
     
     const message = errorMessage || `${this.steps[stepIndex]} failed`;
     showErrorToast(message);
   }
 
   complete(finalMessage?: string): void {
+    if (this.isCompleted) return; // Prevent duplicate completion
+    
+    this.isCompleted = true;
+    
+    // Dismiss current loading toast
     if (this.currentStepToast) {
       toast.dismiss(this.currentStepToast);
       this.currentStepToast = null;
     }
     
-    showSuccessToast(finalMessage || "All steps completed successfully!");
+    // Show final success message
+    if (finalMessage) {
+      showSuccessToast(finalMessage, { duration: 3000 });
+    }
   }
 
   cleanup(): void {
+    this.isCompleted = true;
+    
+    // Dismiss current toast
     if (this.currentStepToast) {
       toast.dismiss(this.currentStepToast);
       this.currentStepToast = null;
     }
+    
+    // Dismiss all tracked toasts
+    this.allToastIds.forEach(id => {
+      try {
+        toast.dismiss(id);
+      } catch (e) {
+        // Ignore errors when dismissing toasts
+      }
+    });
+    
+    this.allToastIds = [];
   }
 }

@@ -30,44 +30,20 @@ export const NAV_DATA = [
   },
   {
     label: "MANAGEMENT", 
-    items: [
-      {
-        title: "Packages",
-        url: "/admin/packages",
-        icon: Icons.Package,
-      },
+    items: [      
       {
         title: "Calendar",
         url: "/admin/calendar",
         icon: Icons.Calendar,
       },
-      {
-        title: "Tables",
-        url: "/admin/tables",
-        icon: Icons.Table,
-        items: [
-          {
-            title: "Tables",
-            url: "/admin/tables",
-          },
-        ],
-      },
+      
       {
         title: "Packages",
         url: "/admin/packages",
         icon: Icons.Package,
         items: [],
       },
-      {
-        title: "Pages",
-        icon: Icons.Alphabet,
-        items: [
-          {
-            title: "Settings",
-            url: "/admin/pages/settings",
-          },
-        ],
-      },
+      
     ],
   },
   {

@@ -34,20 +34,15 @@ export default function PersonalInfo() {
         setIsLoading(true);
         console.log("Fetching user data from API...");
         
-        // Show loading toast for user data fetch
-        const loadingToast = showLoadingToast("Loading your profile information...");
-        
         const response = await usersService.getCurrentUser();
         
-        // Dismiss loading toast
-        toast.dismiss(loadingToast);
-        
-        // Handle the API response with comprehensive toast handling
-        handleApiResponse(response, {
-          successMessage: "Profile information loaded successfully",
-          context: "load profile",
-          showDataInfo: false
-        });
+        // Handle the API response silently on initial load
+        if (!response.isSuccess) {
+          handleApiResponse(response, {
+            context: "load profile",
+            showDataInfo: false
+          });
+        }
         
         if (response.isSuccess && response.data) {
           console.log("API Response:", response.data);

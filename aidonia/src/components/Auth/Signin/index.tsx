@@ -50,8 +50,9 @@ const Signin = () => {
     ]);
 
     try {
-      // Step 1: Authenticate user
+      // Single loading toast for the entire process
       toastHandler.startStep(0);
+      
       const authResponse = await api.post("auth/authentication", {
         email,
         password,
@@ -63,10 +64,6 @@ const Signin = () => {
       );
 
       if (authResponse.data && authResponse.data.id) {
-        toastHandler.completeStep(0, "Authentication successful!");
-
-        // Step 2: Save tokens
-        toastHandler.startStep(1);
         // Save tokens IMMEDIATELY before anything else
         const token =
           authResponse.data.token ||
@@ -82,7 +79,7 @@ const Signin = () => {
           console.log("[Signin] Saved access token to storage & cookie.");
         } else {
           console.warn("[Signin] No access token present in response!");
-          toastHandler.failStep(1, "No access token received from server");
+          toastHandler.failStep(0, "No access token received from server");
           return;
         }
 
@@ -92,11 +89,8 @@ const Signin = () => {
         } else {
           console.warn("[Signin] No refresh token present in response!");
         }
-        
-        toastHandler.completeStep(1, "Authentication tokens saved securely");
 
-        // Step 3: Extract user+role from login response
-        toastHandler.startStep(2);
+        // Extract user+role from login response
         const rawRole =
           authResponse.data.role ||
           authResponse.data.Role ||
@@ -123,21 +117,12 @@ const Signin = () => {
         };
 
         setUser(userData);
-        toastHandler.completeStep(2, `Welcome back, ${userData.userName}!`);
-
-        // Step 4: Redirect to appropriate dashboard
-        toastHandler.startStep(3);
-        if (normalized === "admin") {
-          console.log("[Signin] Redirecting to /admin...");
-        } else {
-          console.log("[Signin] Redirecting to / ...");
-        }
         
-        // Complete the signin process
+        // Complete with single final message
         toastHandler.complete(
           normalized === "admin" 
             ? "Welcome back, Admin! Redirecting to dashboard..." 
-            : "Sign-in successful! Redirecting..."
+            : `Welcome back, ${userData.userName}! Redirecting...`
         );
 
         // Prefer replace so back button doesn't return to /signin
