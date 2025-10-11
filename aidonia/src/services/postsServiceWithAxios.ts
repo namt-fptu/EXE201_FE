@@ -68,13 +68,24 @@ export const postsService = {
 
   // Approve post
   approve: async (postId: string): Promise<PostResponse> => {
-    const response = await api.put<PostResponse>(`/posts/approve/${postId}`);
-    return response.data;
+    console.log(`Calling API: /posts/approve/${postId}`);
+    try {
+      const response = await api.put<PostResponse>(`/posts/approve/${postId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error approving post ${postId}:`, error);
+      throw new Error(error.response?.data?.message || 'Failed to approve post.');
+    }
   },
 
   // Reject post
   reject: async (postId: string): Promise<PostResponse> => {
-    const response = await api.put<PostResponse>(`/posts/reject/${postId}`);
-    return response.data;
+    try {
+      const response = await api.put<PostResponse>(`/posts/reject/${postId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error rejecting post ${postId}:`, error);
+      throw new Error(error.response?.data?.message || 'Failed to reject post.');
+    }
   },
 };
