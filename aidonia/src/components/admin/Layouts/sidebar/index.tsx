@@ -28,7 +28,7 @@ export function Sidebar() {
     // Keep collapsible open, when it's subpage is active
     NAV_DATA.some((section) => {
       return section.items.some((item) => {
-        return item.items.some((subItem) => {
+        return item.items?.some((subItem) => {
           if (subItem.url === pathname) {
             if (!expandedItems.includes(item.title)) {
               toggleExpanded(item.title);
@@ -55,7 +55,7 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          "max-w-[280px] overflow-hidden border-r border-gray-200/60 bg-white/95 backdrop-blur-xl transition-[width] duration-300 ease-out dark:border-gray-800/50 dark:bg-gray-900/95",
+          "max-w-[280px] overflow-hidden border-r border-primary-200 bg-white backdrop-blur-xl transition-[width] duration-300 ease-out shadow-lg shadow-primary-100/25",
           isMobile ? "fixed bottom-0 top-0 z-50 shadow-2xl" : "sticky top-0 h-screen",
           isOpen ? "w-full" : "w-0",
         )}
@@ -66,7 +66,7 @@ export function Sidebar() {
         <div className="flex h-full flex-col py-8 pl-6 pr-4">
           <div className="relative pr-4">
             <Link
-              href={"/"}
+              href={"/admin"}
               onClick={() => isMobile && toggleSidebar()}
               className="px-0 py-3 min-[850px]:py-2 block"
             >
@@ -89,89 +89,70 @@ export function Sidebar() {
           <div className="custom-scrollbar mt-6 flex-1 overflow-y-auto pr-2 min-[850px]:mt-8">
             {NAV_DATA.map((section, sectionIndex) => (
               <div key={section.label} className={`${sectionIndex > 0 ? 'mt-8' : ''} mb-7`}>
-                <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                <h2 className="mb-4 text-xs font-bold uppercase tracking-wider text-primary-600">
                   {section.label}
                 </h2>
 
                 <nav role="navigation" aria-label={section.label}>
                   <ul className="space-y-1">
-                    {section.items.map((item) => (
-                      <li key={item.title}>
-                        {item.items.length ? (
-                          <div>
-                            <MenuItem
-                              isActive={item.items.some(
-                                ({ url }) => url === pathname,
-                              )}
-                              onClick={() => toggleExpanded(item.title)}
-                            >
-                              <item.icon
-                                className="size-5 shrink-0 text-current"
-                                aria-hidden="true"
-                              />
+                    {section.items.map((item) => {
+                      const hasSubItems = item.items && item.items.length > 0;
+                      const itemHref = "url" in item ? item.url : `/${item.title.toLowerCase().split(" ").join("-")}`;
+                      const isItemActive = hasSubItems 
+                        ? item.items!.some(({ url }) => url === pathname)
+                        : pathname === itemHref;
 
-                              <span className="font-medium">{item.title}</span>
-
+                      return (
+                        <li key={item.title}>
+                          <MenuItem
+                            {...(hasSubItems 
+                              ? { onClick: () => toggleExpanded(item.title) }
+                              : { as: "link" as const, href: itemHref }
+                            )}
+                            isActive={isItemActive}
+                            className="flex items-center gap-3"
+                          >
+                            <item.icon
+                              className="size-5 shrink-0 text-current"
+                              aria-hidden="true"
+                            />
+                            <span className="font-medium">{item.title}</span>
+                            {hasSubItems && (
                               <ChevronUp
                                 className={cn(
-                                  "ml-auto size-4 rotate-180 transition-transform duration-200 text-gray-400",
-                                  expandedItems.includes(item.title) &&
-                                    "rotate-0",
+                                  "ml-auto size-4 rotate-180 transition-transform duration-200 text-slate-600",
+                                  expandedItems.includes(item.title) && "rotate-0",
                                 )}
                                 aria-hidden="true"
                               />
-                            </MenuItem>
-
-                            {expandedItems.includes(item.title) && (
-                              <ul
-                                className="ml-6 mr-0 space-y-1 pb-3 pr-0 pt-2 border-l-2 border-gray-100 dark:border-gray-700"
-                                role="menu"
-                              >
-                                {item.items.map((subItem) => (
-                                  <li key={subItem.title} role="none" className="pl-4">
-                                    <MenuItem
-                                      as="link"
-                                      href={subItem.url}
-                                      isActive={pathname === subItem.url}
-                                      className="text-sm py-2 rounded-lg"
-                                    >
-                                      <span className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500" />
-                                        {subItem.title}
-                                      </span>
-                                    </MenuItem>
-                                  </li>
-                                ))}
-                              </ul>
                             )}
-                          </div>
-                        ) : (
-                          (() => {
-                            const href =
-                              "url" in item
-                                ? item.url + ""
-                                : "/" +
-                                  item.title.toLowerCase().split(" ").join("-");
+                          </MenuItem>
 
-                            return (
-                              <MenuItem
-                                className="flex items-center gap-3"
-                                as="link"
-                                href={href}
-                                isActive={pathname === href}
-                              >
-                                <item.icon
-                                  className="size-5 shrink-0 text-current"
-                                  aria-hidden="true"
-                                />
-
-                                <span className="font-medium">{item.title}</span>
-                              </MenuItem>
-                            );
-                          })()
-                        )}
-                      </li>
-                    ))}
+                          {hasSubItems && expandedItems.includes(item.title) && (
+                            <ul
+                              className="ml-6 mr-0 space-y-1 pb-3 pr-0 pt-2 border-l-2 border-primary-200"
+                              role="menu"
+                            >
+                              {item.items!.map((subItem) => (
+                                <li key={subItem.title} role="none" className="pl-4">
+                                  <MenuItem
+                                    as="link"
+                                    href={subItem.url}
+                                    isActive={pathname === subItem.url}
+                                    className="text-sm py-2 rounded-lg"
+                                  >
+                                    <span className="flex items-center gap-2">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-primary-500" />
+                                      {subItem.title}
+                                    </span>
+                                  </MenuItem>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </nav>
               </div>

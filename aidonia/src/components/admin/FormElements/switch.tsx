@@ -25,9 +25,9 @@ export function Switch({
       <div className="relative">
         <input type="checkbox" name={name} id={id} className="peer sr-only" />
         <div
-          className={cn("h-8 w-14 rounded-full bg-gray-3 dark:bg-[#5A616B]", {
+          className={cn("h-8 w-14 rounded-full bg-gray-3 {
             "h-5": backgroundSize === "sm",
-            "bg-[#212B36] dark:bg-primary": background === "dark",
+            "bg-[#212B36] background === "dark",
           })}
         />
 
@@ -43,7 +43,7 @@ export function Switch({
         >
           {withIcon && (
             <>
-              <CheckIcon className="check-icon hidden fill-white dark:fill-dark" />
+              <CheckIcon className="check-icon hidden fill-white />
               <XIcon className="x-icon" />
             </>
           )}

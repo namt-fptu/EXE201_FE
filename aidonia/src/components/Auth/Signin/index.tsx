@@ -8,6 +8,7 @@ import useUserStore from "@/redux/userStore";
 import { toast } from "sonner";
 import { normalizeRole, redirectByRole } from "@/utils/auth-helpers";
 import { ensureValidToken } from "@/services/auth";
+import { handleApiResponse, handleApiError, showLoadingToast, showSuccessToast, MultiStepToastHandler } from "@/utils/toast-helper";
 
 const Signin = () => {
   const [email, setEmail] = useState("");
@@ -40,8 +41,18 @@ const Signin = () => {
     e.preventDefault();
     setIsLoading(true);
 
+    // Initialize multi-step toast handler for signin process
+    const toastHandler = new MultiStepToastHandler([
+      "Authenticating credentials...",
+      "Saving authentication tokens...",
+      "Loading user profile...",
+      "Redirecting to dashboard..."
+    ]);
+
     try {
-      // 1) Authenticate user
+      // Single loading toast for the entire process
+      toastHandler.startStep(0);
+      
       const authResponse = await api.post("auth/authentication", {
         email,
         password,
@@ -53,7 +64,7 @@ const Signin = () => {
       );
 
       if (authResponse.data && authResponse.data.id) {
-        // 2) Save tokens IMMEDIATELY before anything else
+        // Save tokens IMMEDIATELY before anything else
         const token =
           authResponse.data.token ||
           authResponse.data.accessToken ||
@@ -68,6 +79,8 @@ const Signin = () => {
           console.log("[Signin] Saved access token to storage & cookie.");
         } else {
           console.warn("[Signin] No access token present in response!");
+          toastHandler.failStep(0, "No access token received from server");
+          return;
         }
 
         if (refreshToken) {
@@ -77,7 +90,7 @@ const Signin = () => {
           console.warn("[Signin] No refresh token present in response!");
         }
 
-        // 3) Extract user+role from login response (no extra API calls)
+        // Extract user+role from login response
         const rawRole =
           authResponse.data.role ||
           authResponse.data.Role ||
@@ -92,69 +105,49 @@ const Signin = () => {
           normalized
         );
 
-        // 4) Persist user in store (non-blocking)
+        // Persist user in store
         const userData = {
           id: authResponse.data.id.toString(),
-          username: authResponse.data.userName || authResponse.data.username,
+          userName: authResponse.data.userName || authResponse.data.username || authResponse.data.email,
+          username: authResponse.data.userName || authResponse.data.username || authResponse.data.email,
+          email: authResponse.data.email || 'unknown@example.com',
           role: normalized,
           avatarImage:
             authResponse.data.avataImage || authResponse.data.avatarImage,
         };
 
         setUser(userData);
+        
+        // Complete with single final message
+        toastHandler.complete(
+          normalized === "admin" 
+            ? "Welcome back, Admin! Redirecting to dashboard..." 
+            : `Welcome back, ${userData.userName}! Redirecting...`
+        );
 
-        // 5) Immediate role-based redirect (<500ms)
-        if (normalized === "admin") {
-          console.log("[Signin] Redirecting to /admin...");
-        } else {
-          console.log("[Signin] Redirecting to / ...");
-        }
         // Prefer replace so back button doesn't return to /signin
         redirectByRole(normalized, {
           push: (path: string) => router.replace(path),
         });
 
-        // 6) Background token refresh check AFTER redirect (non-blocking)
-        // This ensures UI navigation is not blocked by any refresh call
+        // Background token refresh check AFTER redirect (non-blocking)
         setTimeout(() => {
           try {
             void ensureValidToken();
           } catch {}
         }, 1000);
-
-        // Optional UX toast (non-blocking)
-        toast.success(
-          normalized === "admin"
-            ? "Welcome back, Admin!"
-            : "Sign-in successful!",
-          { duration: 2000 }
-        );
+      } else {
+        toastHandler.failStep(0, "Invalid response from server - no user data received");
       }
     } catch (error) {
       console.error("Error during sign-in", error);
+      toastHandler.cleanup();
 
-      if (error && typeof error === "object" && "code" in error) {
-        if (error.code === "ERR_NETWORK") {
-          toast.error(
-            "Network error. Please check if the backend server is running."
-          );
-        } else if (
-          "response" in error &&
-          error.response &&
-          typeof error.response === "object" &&
-          "status" in error.response
-        ) {
-          if (error.response.status === 401) {
-            toast.error("Invalid email or password");
-          } else {
-            toast.error("Sign-in failed. Please try again.");
-          }
-        } else {
-          toast.error("Sign-in failed. Please try again.");
-        }
-      } else {
-        toast.error("Sign-in failed. Please try again.");
-      }
+      // Use the comprehensive error handler
+      handleApiError(error, {
+        context: 'signin',
+        showDetails: true
+      });
     } finally {
       setIsLoading(false);
     }

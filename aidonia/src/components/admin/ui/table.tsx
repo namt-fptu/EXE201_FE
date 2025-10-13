@@ -38,7 +38,7 @@ export function TableFooter({
   return (
     <tfoot
       className={cn(
-        "border-t bg-neutral-100/50 font-medium dark:bg-neutral-800/50 [&>tr]:last:border-b-0",
+        "border-t bg-neutral-100/50 font-medium [&>tr]:last:border-b-0",
         className,
       )}
       {...props}
@@ -53,7 +53,7 @@ export function TableRow({
   return (
     <tr
       className={cn(
-        "border-b transition-colors hover:bg-neutral-100/50 data-[state=selected]:bg-neutral-100 dark:border-dark-3 dark:hover:bg-dark-2 dark:data-[state=selected]:bg-neutral-800",
+        "border-b transition-colors hover:bg-neutral-100/50 data-[state=selected]:bg-neutral-100",
         className,
       )}
       {...props}
@@ -68,7 +68,7 @@ export function TableHead({
   return (
     <th
       className={cn(
-        "h-12 px-4 text-left align-middle font-medium text-neutral-500 dark:text-neutral-400 [&:has([role=checkbox])]:pr-0",
+        "h-12 px-4 text-left align-middle font-medium text-neutral-500 [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}

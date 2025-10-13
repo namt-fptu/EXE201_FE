@@ -1,16 +1,14 @@
+"use client";
+
 import { MessageOutlineIcon } from "@/assets/icons";
 import Breadcrumb from "@/components/admin/Breadcrumbs/Breadcrumb";
 import { ShowcaseSection } from "@/components/admin/Layouts/showcase-section";
 import { Button } from "@/components/admin/ui-elements/button";
-import { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Buttons",
-};
+import AdminLayout from "@/components/admin/AdminLayout";
 
 export default function Page() {
   return (
-    <>
+    <AdminLayout pageTitle="Buttons">
       <Breadcrumb pageName="Buttons" />
 
       <div className="space-y-10">
@@ -128,6 +126,6 @@ export default function Page() {
           </div>
         </ShowcaseSection>
       </div>
-    </>
+    </AdminLayout>
   );
 }

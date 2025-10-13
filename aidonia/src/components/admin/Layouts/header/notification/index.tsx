@@ -5,124 +5,147 @@ import {
   DropdownContent,
   DropdownTrigger,
 } from "@/components/admin/ui/dropdown";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { cn } from "@/app/admin/lib/utils";
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { BellIcon } from "./icons";
 
-const notificationList = [
+// Bell Icon component
+const BellIcon = () => (
+  <svg
+    className="h-5 w-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+    />
+  </svg>
+);
+
+const notifications = [
   {
-    image: "/images/user/user-15.png",
-    title: "Piter Joined the Team!",
-    subTitle: "Congratulate him",
+    id: 1,
+    title: "New message received",
+    message: "You have received a new message from John Doe",
+    time: "2 min ago",
+    read: false,
   },
   {
-    image: "/images/user/user-03.png",
-    title: "New message",
-    subTitle: "Devid sent a new message",
+    id: 2,
+    title: "Package updated",
+    message: "Premium package has been updated successfully",
+    time: "1 hour ago",
+    read: true,
   },
   {
-    image: "/images/user/user-26.png",
-    title: "New Payment received",
-    subTitle: "Check your earnings",
-  },
-  {
-    image: "/images/user/user-28.png",
-    title: "Jolly completed tasks",
-    subTitle: "Assign new task",
-  },
-  {
-    image: "/images/user/user-27.png",
-    title: "Roman Joined the Team!",
-    subTitle: "Congratulate him",
+    id: 3,
+    title: "System maintenance",
+    message: "Scheduled maintenance will begin at 2:00 AM",
+    time: "3 hours ago",
+    read: false,
   },
 ];
 
 export function Notification() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isDotVisible, setIsDotVisible] = useState(true);
-  const isMobile = useIsMobile();
+  const [notificationList, setNotificationList] = useState(notifications);
+
+  const unreadCount = notificationList.filter((n) => !n.read).length;
+
+  const markAsRead = (id: number) => {
+    setNotificationList((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  };
+
+  const markAllAsRead = () => {
+    setNotificationList((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
 
   return (
-    <Dropdown
-      isOpen={isOpen}
-      setIsOpen={(open) => {
-        setIsOpen(open);
-
-        if (setIsDotVisible) setIsDotVisible(false);
-      }}
-    >
+    <Dropdown isOpen={isOpen} setIsOpen={setIsOpen}>
       <DropdownTrigger
-        className="grid size-12 place-items-center rounded-full border bg-gray-2 text-dark outline-none hover:text-primary focus-visible:border-primary focus-visible:text-primary dark:border-dark-4 dark:bg-dark-3 dark:text-white dark:focus-visible:border-primary"
+        className="grid size-12 place-items-center rounded-full border bg-gray-2 text-dark outline-none hover:text-primary focus-visible:border-primary focus-visible:text-primary"
         aria-label="View Notifications"
       >
         <span className="relative">
           <BellIcon />
-
-          {isDotVisible && (
-            <span
-              className={cn(
-                "absolute right-0 top-0 z-1 size-2 rounded-full bg-red-light ring-2 ring-gray-2 dark:ring-dark-3",
-              )}
-            >
-              <span className="absolute inset-0 -z-1 animate-ping rounded-full bg-red-light opacity-75" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red text-xs text-white">
+              {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
         </span>
       </DropdownTrigger>
 
       <DropdownContent
-        align={isMobile ? "end" : "center"}
-        className="border border-stroke bg-white px-3.5 py-3 shadow-md dark:border-dark-3 dark:bg-gray-dark min-[350px]:min-w-[20rem]"
+        className="w-80 border border-stroke bg-white shadow-md"
+        align="end"
       >
-        <div className="mb-1 flex items-center justify-between px-2 py-1.5">
-          <span className="text-lg font-medium text-dark dark:text-white">
-            Notifications
-          </span>
-          <span className="rounded-md bg-primary px-[9px] py-0.5 text-xs font-medium text-white">
-            5 new
-          </span>
+        <div className="border-b border-stroke px-4 py-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-dark">Notifications</h3>
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllAsRead}
+                className="text-sm text-primary hover:underline"
+              >
+                Mark all as read
+              </button>
+            )}
+          </div>
         </div>
 
-        <ul className="mb-3 max-h-[23rem] space-y-1.5 overflow-y-auto">
-          {notificationList.map((item, index) => (
-            <li key={index} role="menuitem">
-              <Link
-                href="#"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-4 rounded-lg px-2 py-1.5 outline-none hover:bg-gray-2 focus-visible:bg-gray-2 dark:hover:bg-dark-3 dark:focus-visible:bg-dark-3"
+        <div className="max-h-96 overflow-y-auto">
+          {notificationList.length > 0 ? (
+            notificationList.map((notification) => (
+              <div
+                key={notification.id}
+                className={`border-b border-stroke px-4 py-3 hover:bg-gray-1 cursor-pointer ${
+                  !notification.read ? "bg-blue-50" : ""
+                }`}
+                onClick={() => markAsRead(notification.id)}
               >
-                <Image
-                  src={item.image}
-                  className="size-14 rounded-full object-cover"
-                  width={200}
-                  height={200}
-                  alt="User"
-                />
-
-                <div>
-                  <strong className="block text-sm font-medium text-dark dark:text-white">
-                    {item.title}
-                  </strong>
-
-                  <span className="truncate text-sm font-medium text-dark-5 dark:text-dark-6">
-                    {item.subTitle}
-                  </span>
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`mt-1 h-2 w-2 rounded-full ${
+                      !notification.read ? "bg-primary" : "bg-gray-4"
+                    }`}
+                  />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-dark">
+                      {notification.title}
+                    </h4>
+                    <p className="mt-1 text-xs text-gray-6">
+                      {notification.message}
+                    </p>
+                    <span className="mt-2 text-xs text-gray-5">
+                      {notification.time}
+                    </span>
+                  </div>
                 </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+              </div>
+            ))
+          ) : (
+            <div className="px-4 py-8 text-center">
+              <p className="text-gray-6">No notifications yet</p>
+            </div>
+          )}
+        </div>
 
-        <Link
-          href="#"
-          onClick={() => setIsOpen(false)}
-          className="block rounded-lg border border-primary p-2 text-center text-sm font-medium tracking-wide text-primary outline-none transition-colors hover:bg-blue-light-5 focus:bg-blue-light-5 focus:text-primary focus-visible:border-primary dark:border-dark-3 dark:text-dark-6 dark:hover:border-dark-5 dark:hover:bg-dark-3 dark:hover:text-dark-7 dark:focus-visible:border-dark-5 dark:focus-visible:bg-dark-3 dark:focus-visible:text-dark-7"
-        >
-          See all notifications
-        </Link>
+        <div className="border-t border-stroke px-4 py-3">
+          <Link
+            href="/admin/notifications"
+            className="block w-full text-center text-sm text-primary hover:underline"
+            onClick={() => setIsOpen(false)}
+          >
+            View all notifications
+          </Link>
+        </div>
       </DropdownContent>
     </Dropdown>
   );

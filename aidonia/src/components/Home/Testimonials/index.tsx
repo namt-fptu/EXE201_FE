@@ -3,9 +3,12 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { useCallback, useRef } from "react";
 import testimonialsData from "./testimonialsData";
 import Image from "next/image";
+import SingleItem from "./SingleItem";
 
 // Import Swiper styles
-import SingleItem from "./SingleItem";
+import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
 
 const Testimonials = () => {
   const sliderRef = useRef(null);
@@ -43,7 +46,7 @@ const Testimonials = () => {
               </div>
 
               <div className="flex items-center gap-3">
-                <div onClick={handlePrev} className="swiper-button-prev">
+                <div onClick={handlePrev} className="swiper-button-prev cursor-pointer">
                   <svg
                     className="fill-current"
                     width="24"
@@ -61,7 +64,7 @@ const Testimonials = () => {
                   </svg>
                 </div>
 
-                <div onClick={handleNext} className="swiper-button-next">
+                <div onClick={handleNext} className="swiper-button-next cursor-pointer">
                   <svg
                     className="fill-current"
                     width="24"
@@ -85,18 +88,19 @@ const Testimonials = () => {
               ref={sliderRef}
               slidesPerView={3}
               spaceBetween={20}
+              slidesPerGroup={3}
               breakpoints={{
-                // when window width is >= 640px
                 0: {
                   slidesPerView: 1,
+                  slidesPerGroup: 1,
                 },
-                1000: {
+                768: {
                   slidesPerView: 2,
-                  // spaceBetween: 4,
+                  slidesPerGroup: 2,
                 },
-                // when window width is >= 768px
                 1200: {
                   slidesPerView: 3,
+                  slidesPerGroup: 3,
                 },
               }}
             >

@@ -29,77 +29,42 @@ export const NAV_DATA = [
     ],
   },
   {
-    label: "MANAGEMENT",
-    items: [
+    label: "MANAGEMENT", 
+    items: [      
       {
         title: "Packages",
         url: "/admin/packages",
         icon: Icons.Package,
         items: [],
       },
+      
       {
-        title: "Calendar",
-        url: "/admin/calendar",
-        icon: Icons.Calendar,
-        items: [],
-      },
-      {
-        title: "Forms",
-        icon: Icons.Forms,
-        items: [
-          {
-            title: "Form Elements",
-            url: "/admin/forms/form-elements",
-          },
-          {
-            title: "Form Layout",
-            url: "/admin/forms/form-layout",
-          },
-        ],
-      },
-      {
-        title: "Tables",
-        url: "/admin/tables",
+        title: "Categories",
+        url: "/admin/categories",
         icon: Icons.Table,
-        items: [
-          {
-            title: "Tables",
-            url: "/admin/tables",
-          },
-        ],
-      },
-      {
-        title: "Packages",
-        url: "/admin/packages",
-        icon: Icons.Package,
         items: [],
       },
+      
       {
-        title: "Pages",
-        icon: Icons.Alphabet,
-        items: [
-          {
-            title: "Settings",
-            url: "/admin/pages/settings",
-          },
-        ],
+        title: "Post Approval",
+        url: "/admin/post-approval",
+        icon: Icons.Settings,
       },
+      
     ],
   },
   {
     label: "ACCOUNT",
     items: [
       {
-        title: "Profile",
+        title: "Profile", 
         url: "/admin/profile",
         icon: Icons.User,
-        items: [],
       },
       {
         title: "Settings",
-        url: "/admin/settings",
+        url: "/admin/pages/settings",
         icon: Icons.Settings,
-        items: [],
       },
     ],
   },

@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import api from "@/services/axios";
 import { toast } from "sonner";
 import Breadcrumb from "@/components/Common/Breadcrumb";
+import { handleApiResponse, handleApiError, showLoadingToast, showSuccessToast, showErrorToast, showInfoToast, MultiStepToastHandler } from "@/utils/toast-helper";
 
 const VerifyEmailPage = () => {
   const [isVerifying, setIsVerifying] = useState(true);
@@ -23,47 +24,86 @@ const VerifyEmailPage = () => {
         setMessage(
           "Verification token is missing. Please check your email link."
         );
+        showErrorToast("Verification token missing", {
+          description: "Please check your email link and try again"
+        });
         setIsVerifying(false);
         return;
       }
 
+      // Initialize multi-step verification process
+      const toastHandler = new MultiStepToastHandler([
+        "Validating verification token...",
+        "Connecting to email service...",
+        "Verifying your email address...",
+        "Activating account features..."
+      ]);
+
       try {
+        // Step 1: Validate token
+        toastHandler.startStep(0);
+        toastHandler.completeStep(0, "Token validated successfully");
+        
+        // Step 2: Connect to service
+        toastHandler.startStep(1);
+        toastHandler.completeStep(1, "Connected to verification service");
+        
+        // Step 3: Verify email
+        toastHandler.startStep(2);
         const response = await api.get(`emails/verify`, {
           params: { token },
         });
 
+        // Handle the API response comprehensively
+        handleApiResponse(response, {
+          successMessage: "Email verification successful!",
+          errorMessage: "Email verification failed",
+          context: "verify email",
+          showDataInfo: false
+        });
+
         if (response.data?.isSuccess && response.data?.data) {
+          toastHandler.completeStep(2, "Email address verified successfully");
+          
+          // Step 4: Activate features
+          toastHandler.startStep(3);
           setVerificationStatus("success");
           setMessage(
             "Email verified successfully! You can now enjoy all features."
           );
-          toast.success("Email verified successfully!", {
-            duration: 3000,
-            description: "Redirecting to your account..."
-          });
+          
+          toastHandler.complete("Email verification complete! Redirecting to your account...");
 
           // Redirect to account page after 3 seconds
           setTimeout(() => {
             router.push("/my-account");
           }, 3000);
         } else {
+          toastHandler.cleanup();
           setVerificationStatus("error");
           setMessage(
             response.data?.message ||
               "Email verification failed. The link may be expired or invalid."
           );
-          toast.error("Email verification failed", {
-            duration: 4000,
+          
+          showErrorToast("Email verification failed", {
+            description: response.data?.message || "The verification link may be expired or invalid"
           });
         }
       } catch (error) {
         console.error("Email verification error:", error);
+        toastHandler.cleanup();
+        
         setVerificationStatus("error");
         setMessage(
           "Email verification failed. Please try again or contact support."
         );
-        toast.error("Email verification failed", {
-          duration: 4000,
+        
+        // Use comprehensive error handling
+        handleApiError(error, {
+          context: 'verify email',
+          customMessage: "Email verification failed",
+          showDetails: true
         });
       } finally {
         setIsVerifying(false);
@@ -75,10 +115,10 @@ const VerifyEmailPage = () => {
 
   const handleResendVerification = async () => {
     // This would need user email - you might want to add an email input field
-    toast.info(
-      "Please go to your account settings to resend verification email",
+    showInfoToast(
+      "Redirecting to account settings",
       {
-        duration: 4000,
+        description: "You can resend verification email from your account settings"
       }
     );
     router.push("/my-account");

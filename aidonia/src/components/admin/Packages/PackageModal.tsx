@@ -186,16 +186,16 @@ export default function PackageModal({
       ></div>
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg mx-4 bg-white dark:bg-gray-dark rounded-[10px] border border-stroke dark:border-dark-3 shadow-1 dark:shadow-card">
+      <div className="relative w-full max-w-lg mx-4 bg-white rounded-[10px] border border-stroke shadow-1">
         <div className="p-6 sm:p-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-7.5">
-            <h3 className="text-title-md font-bold text-dark dark:text-white">
+            <h3 className="text-title-md font-bold text-dark">
               {editPackage ? "Edit Package" : "Create New Package"}
             </h3>
             <button
               onClick={onClose}
-              className="flex h-8.5 w-8.5 items-center justify-center rounded-md border border-stroke bg-gray-2 text-dark hover:border-primary hover:bg-primary hover:text-white dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:border-primary dark:hover:bg-primary"
+              className="flex h-8.5 w-8.5 items-center justify-center rounded-md border border-stroke bg-gray-2 text-dark hover:border-primary hover:bg-primary hover:text-white"
               disabled={isLoading}
             >
               <svg
@@ -215,52 +215,34 @@ export default function PackageModal({
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit}>
             {/* Package Name */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-dark dark:text-white">
-                Package Name <span className="text-red">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={formData.packageName}
-                  onChange={(e) =>
-                    handleInputChange("packageName", e.target.value)
-                  }
-                  onBlur={() => handleBlur("packageName")}
-                  className={`w-full rounded-lg border-2 bg-transparent px-4 py-3 text-dark outline-none transition-all duration-200 placeholder:text-gray-400 disabled:cursor-default disabled:bg-gray-2 dark:bg-dark-2 dark:text-white ${
-                    touched.packageName && fieldValidations.packageName
-                      ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200"
-                      : touched.packageName && !fieldValidations.packageName
-                        ? "border-green-500 focus:border-green-500 focus:ring-2 focus:ring-green-200"
-                        : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-dark-3"
-                  }`}
-                  placeholder="Enter package name (3-50 characters)"
-                  disabled={isLoading}
-                  maxLength={50}
-                />
-                {/* Character counter */}
-                <div className="absolute right-3 top-3 text-xs text-gray-400">
-                  {formData.packageName.length}/50
+            <div className="mb-4.5">
+              <div>
+                <label className="text-body-sm font-medium text-dark">
+                  Package Name <span className="ml-1 select-none text-red">*</span>
+                </label>
+                <div className="relative mt-3 [&_svg]:absolute [&_svg]:top-1/2 [&_svg]:-translate-y-1/2 [&_svg]:left-4.5">
+                  <input
+                    type="text"
+                    placeholder="Enter package name"
+                    value={formData.packageName}
+                    onChange={(e) => handleInputChange("packageName", e.target.value)}
+                    onBlur={() => handleBlur("packageName")}
+                    disabled={isLoading}
+                    className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent outline-none transition focus:border-primary disabled:cursor-default disabled:bg-gray-2 px-5.5 py-3 text-dark placeholder:text-dark-6 pl-12.5"
+                  />
+                  <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M9 3a1 1 0 012 0v5.5a.5.5 0 001 0V4a1 1 0 112 0v4.5a.5.5 0 001 0V5a1 1 0 112 0v5a7 7 0 11-14 0V9a1 1 0 012 0v.5a.5.5 0 001 0V3z" clipRule="evenodd" />
+                  </svg>
                 </div>
               </div>
               {touched.packageName && fieldValidations.packageName && (
-                <div className="flex items-center gap-1 text-red-500">
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                      clipRule="evenodd"
-                    />
+                <div className="mt-2 flex items-center gap-1 text-red text-sm">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-sm">
-                    {fieldValidations.packageName}
-                  </span>
+                  {fieldValidations.packageName}
                 </div>
               )}
               {touched.packageName &&
@@ -284,268 +266,94 @@ export default function PackageModal({
             </div>
 
             {/* Price */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <label className="block text-sm font-medium text-dark dark:text-white">
-                  Price <span className="text-red">*</span>
+            <div className="mb-4.5">
+              <div>
+                <label className="text-body-sm font-medium text-dark">
+                  Price (VND) <span className="ml-1 select-none text-red">*</span>
                 </label>
-                <div className="relative group">
-                  <svg
-                    className="w-4 h-4 text-gray-400 cursor-help"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
-                      clipRule="evenodd"
-                    />
+                <div className="relative mt-3 [&_svg]:absolute [&_svg]:top-1/2 [&_svg]:-translate-y-1/2 [&_svg]:left-4.5">
+                  <input
+                    type="text"
+                    placeholder="Enter price"
+                    value={formData.price}
+                    onChange={(e) => handleInputChange("price", e.target.value)}
+                    onBlur={() => handleBlur("price")}
+                    disabled={isLoading}
+                    className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent outline-none transition focus:border-primary disabled:cursor-default disabled:bg-gray-2 px-5.5 py-3 text-dark placeholder:text-dark-6 pl-12.5"
+                  />
+                  <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                   </svg>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 text-sm text-white bg-gray-800 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                    Enter price in VND (numbers and decimals only)
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                  </div>
                 </div>
-              </div>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={formData.price}
-                  onChange={(e) => handleInputChange("price", e.target.value)}
-                  onBlur={() => handleBlur("price")}
-                  className={`w-full rounded-lg border-2 bg-transparent pl-12 pr-4 py-3 text-dark outline-none transition-all duration-200 placeholder:text-gray-400 disabled:cursor-default disabled:bg-gray-2 dark:bg-dark-2 dark:text-white ${
-                    touched.price && fieldValidations.price
-                      ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200"
-                      : touched.price && !fieldValidations.price
-                        ? "border-green-500 focus:border-green-500 focus:ring-2 focus:ring-green-200"
-                        : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-dark-3"
-                  }`}
-                  placeholder="0.00"
-                  disabled={isLoading}
-                />
-                {/* Currency symbol */}
-                <div className="absolute left-3 top-3 text-gray-500 font-medium">
-                  ₫
-                </div>
-                {/* Formatted preview */}
-                {formData.price && !fieldValidations.price && (
-                  <div className="absolute right-3 top-3 text-sm text-gray-500">
-                    {new Intl.NumberFormat("vi-VN").format(
-                      parseFloat(formData.price) || 0
-                    )}{" "}
-                    VND
-                  </div>
-                )}
               </div>
               {touched.price && fieldValidations.price && (
-                <div className="flex items-center gap-1 text-red-500">
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                      clipRule="evenodd"
-                    />
+                <div className="mt-2 flex items-center gap-1 text-red text-sm">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-sm">{fieldValidations.price}</span>
-                </div>
-              )}
-              {touched.price && !fieldValidations.price && formData.price && (
-                <div className="flex items-center gap-1 text-green-500">
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <span className="text-sm">Valid price format!</span>
+                  {fieldValidations.price}
                 </div>
               )}
             </div>
 
             {/* Post Limit */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <label className="block text-sm font-medium text-dark dark:text-white">
-                  Post Limit <span className="text-red">*</span>
+            <div className="mb-4.5">
+              <div>
+                <label className="text-body-sm font-medium text-dark">
+                  Post Limit <span className="ml-1 select-none text-red">*</span>
                 </label>
-                <div className="relative group">
-                  <svg
-                    className="w-4 h-4 text-gray-400 cursor-help"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
-                      clipRule="evenodd"
-                    />
+                <div className="relative mt-3 [&_svg]:absolute [&_svg]:top-1/2 [&_svg]:-translate-y-1/2 [&_svg]:left-4.5">
+                  <input
+                    type="text"
+                    placeholder="Enter maximum posts allowed"
+                    value={formData.postLimit}
+                    onChange={(e) => handleInputChange("postLimit", e.target.value)}
+                    onBlur={() => handleBlur("postLimit")}
+                    disabled={isLoading}
+                    className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent outline-none transition focus:border-primary disabled:cursor-default disabled:bg-gray-2 px-5.5 py-3 text-dark placeholder:text-dark-6 pl-12.5"
+                  />
+                  <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0h8v12H6V4z" clipRule="evenodd" />
                   </svg>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 text-sm text-white bg-gray-800 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                    Maximum number of posts allowed for this package
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                  </div>
-                </div>
-              </div>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={formData.postLimit}
-                  onChange={(e) =>
-                    handleInputChange("postLimit", e.target.value)
-                  }
-                  onBlur={() => handleBlur("postLimit")}
-                  className={`w-full rounded-lg border-2 bg-transparent pl-12 pr-16 py-3 text-dark outline-none transition-all duration-200 placeholder:text-gray-400 disabled:cursor-default disabled:bg-gray-2 dark:bg-dark-2 dark:text-white ${
-                    touched.postLimit && fieldValidations.postLimit
-                      ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200"
-                      : touched.postLimit && !fieldValidations.postLimit
-                        ? "border-green-500 focus:border-green-500 focus:ring-2 focus:ring-green-200"
-                        : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-dark-3"
-                  }`}
-                  placeholder="1"
-                  disabled={isLoading}
-                />
-                {/* Icon */}
-                <div className="absolute left-3 top-3 text-gray-500">
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0h8v12H6V4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                {/* Posts label */}
-                <div className="absolute right-3 top-3 text-sm font-medium text-gray-500">
-                  posts
                 </div>
               </div>
               {touched.postLimit && fieldValidations.postLimit && (
-                <div className="flex items-center gap-1 text-red-500">
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                      clipRule="evenodd"
-                    />
+                <div className="mt-2 flex items-center gap-1 text-red text-sm">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-sm">{fieldValidations.postLimit}</span>
+                  {fieldValidations.postLimit}
                 </div>
               )}
-              {touched.postLimit &&
-                !fieldValidations.postLimit &&
-                formData.postLimit && (
-                  <div className="flex items-center gap-1 text-green-500">
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span className="text-sm">Valid post limit!</span>
-                  </div>
-                )}
             </div>
 
             {/* Duration in Days */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <label className="block text-sm font-medium text-dark dark:text-white">
-                  Duration (Days) <span className="text-red">*</span>
+            <div className="mb-6">
+              <div>
+                <label className="text-body-sm font-medium text-dark">
+                  Duration (Days) <span className="ml-1 select-none text-red">*</span>
                 </label>
-                <div className="relative group">
-                  <svg
-                    className="w-4 h-4 text-gray-400 cursor-help"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
-                      clipRule="evenodd"
-                    />
+                <div className="relative mt-3 [&_svg]:absolute [&_svg]:top-1/2 [&_svg]:-translate-y-1/2 [&_svg]:left-4.5">
+                  <input
+                    type="text"
+                    placeholder="Enter package validity in days"
+                    value={formData.durationInDays}
+                    onChange={(e) => handleInputChange("durationInDays", e.target.value)}
+                    onBlur={() => handleBlur("durationInDays")}
+                    disabled={isLoading}
+                    className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent outline-none transition focus:border-primary disabled:cursor-default disabled:bg-gray-2 px-5.5 py-3 text-dark placeholder:text-dark-6 pl-12.5"
+                  />
+                  <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zM4 8h12v8H4V8z" clipRule="evenodd" />
                   </svg>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 text-sm text-white bg-gray-800 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                    Package validity period in days
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                  </div>
-                </div>
-              </div>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={formData.durationInDays}
-                  onChange={(e) =>
-                    handleInputChange("durationInDays", e.target.value)
-                  }
-                  onBlur={() => handleBlur("durationInDays")}
-                  className={`w-full rounded-lg border-2 bg-transparent pl-12 pr-16 py-3 text-dark outline-none transition-all duration-200 placeholder:text-gray-400 disabled:cursor-default disabled:bg-gray-2 dark:bg-dark-2 dark:text-white ${
-                    touched.durationInDays && fieldValidations.durationInDays
-                      ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200"
-                      : touched.durationInDays &&
-                          !fieldValidations.durationInDays
-                        ? "border-green-500 focus:border-green-500 focus:ring-2 focus:ring-green-200"
-                        : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-dark-3"
-                  }`}
-                  placeholder="30"
-                  disabled={isLoading}
-                />
-                {/* Calendar icon */}
-                <div className="absolute left-3 top-3 text-gray-500">
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zM4 8h12v8H4V8z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                {/* Days label */}
-                <div className="absolute right-3 top-3 text-sm font-medium text-gray-500">
-                  days
                 </div>
               </div>
               {touched.durationInDays && fieldValidations.durationInDays && (
-                <div className="flex items-center gap-1 text-red-500">
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                      clipRule="evenodd"
-                    />
+                <div className="mt-2 flex items-center gap-1 text-red text-sm">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-sm">
-                    {fieldValidations.durationInDays}
-                  </span>
+                  {fieldValidations.durationInDays}
                 </div>
               )}
               {touched.durationInDays &&
@@ -569,19 +377,19 @@ export default function PackageModal({
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-4 pt-5.5">
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isLoading}
-                className="flex flex-1 justify-center rounded-[7px] border border-stroke bg-gray-2 px-6 py-[7px] text-dark transition hover:border-gray-3 hover:bg-gray-3 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:border-gray dark:hover:bg-gray disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex justify-center rounded-lg border border-stroke bg-gray-2 p-[13px] font-medium text-dark hover:bg-gray-3 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto w-full"
               >
                 Cancel
               </button>
-              <button
+              <button 
                 type="submit"
                 disabled={isLoading}
-                className="flex flex-1 justify-center rounded-[7px] bg-primary px-6 py-[7px] font-medium text-gray-2 transition hover:bg-blue-dark disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex justify-center rounded-lg bg-primary p-[13px] font-medium text-white hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 flex-1"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">

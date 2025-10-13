@@ -233,10 +233,10 @@ const Header = () => {
                       className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
                     >
                       <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-3">
-                        {user.avatarImage ? (
+                        {user.avataImage ? (
                           <Image
-                            src={user.avatarImage}
-                            alt={user.username}
+                            src={user.avataImage}
+                            alt={user.userName || 'User'}
                             width={40}
                             height={40}
                             className="w-full h-full object-cover"
@@ -244,7 +244,7 @@ const Header = () => {
                         ) : (
                           <div className="w-full h-full bg-blue flex items-center justify-center">
                             <span className="text-white font-medium text-sm">
-                              {user.username.charAt(0).toUpperCase()}
+                              {user.userName ? user.userName.charAt(0).toUpperCase() : 'U'}
                             </span>
                           </div>
                         )}
@@ -254,7 +254,7 @@ const Header = () => {
                           Welcome
                         </span>
                         <p className="font-medium text-custom-sm text-dark">
-                          {user.username}
+                          {user.userName || 'User'}
                         </p>
                       </div>
                       <svg

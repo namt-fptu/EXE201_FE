@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
+"use client";
 
 import { GlobeIcon } from "@/assets/icons";
 import Breadcrumb from "@/components/admin/Breadcrumbs/Breadcrumb";
+import AdminLayout from "@/components/admin/AdminLayout";
 import DatePickerOne from "@/components/admin/FormElements/DatePicker/DatePickerOne";
 import DatePickerTwo from "@/components/admin/FormElements/DatePicker/DatePickerTwo";
-import InputGroup from "@/components/admin/FormElements/InputGroup";
+import { InputGroup } from "@/components/admin/FormElements/InputGroup";
 import { TextAreaGroup } from "@/components/admin/FormElements/InputGroup/text-area";
 import MultiSelect from "@/components/admin/FormElements/MultiSelect";
 import { Checkbox } from "@/components/admin/FormElements/checkbox";
@@ -13,13 +14,9 @@ import { Select } from "@/components/admin/FormElements/select";
 import { Switch } from "@/components/admin/FormElements/switch";
 import { ShowcaseSection } from "@/components/admin/Layouts/showcase-section";
 
-export const metadata: Metadata = {
-  title: "Form Elements",
-};
-
 export default function FormElementsPage() {
   return (
-    <>
+    <AdminLayout pageTitle="Form Elements">
       <Breadcrumb pageName="Form Elements" />
 
       <div className="grid grid-cols-1 gap-9 sm:grid-cols-2">
@@ -124,6 +121,6 @@ export default function FormElementsPage() {
           </ShowcaseSection>
         </div>
       </div>
-    </>
+    </AdminLayout>
   );
 }

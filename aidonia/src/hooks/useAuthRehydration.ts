@@ -44,9 +44,9 @@ export const useAuthRehydration = () => {
         if (savedUser) {
           try {
             parsedUser = JSON.parse(savedUser);
-            debugLog.auth("Loaded user from storage", {
-              role: parsedUser.role,
-              username: parsedUser.username,
+            debugLog.auth("Loaded user from storage", { 
+              role: parsedUser.role, 
+              username: parsedUser.userName || parsedUser.username 
             });
           } catch (error) {
             debugLog.error("Error parsing saved user data", error);

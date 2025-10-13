@@ -4,10 +4,17 @@ import defaultTheme from "tailwindcss/defaultTheme";
 const config = {
   content: [
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    // ✅ PERFORMANCE: More specific paths for faster scanning
+    "./src/components/**/*.{js,ts,jsx,tsx}",
+    "./src/app/**/*.{js,ts,jsx,tsx}",
+    // Add specific paths to avoid scanning unnecessary files
+    "!./src/**/*.{test,spec}.{js,ts,jsx,tsx}",
+    "!./node_modules/**/*"
   ],
-  darkMode: ["class"],
+  
+  // ✅ PERFORMANCE: Enable JIT mode for faster builds
+  mode: 'jit',
+  // darkMode disabled for admin
   theme: {
     fontFamily: {
       'euclid-circular-a': ["Euclid Circular A", 'sans-serif'],
@@ -33,7 +40,59 @@ const config = {
       transparent: "transparent",
       white: "#FFFFFF",
       body: "#6C6F93",
-      primary: "#5750F1",
+      // Aidonia Brand Colors from Logo
+      primary: {
+        DEFAULT: "#5750F1", // Main brand purple-blue from logo
+        50: "#F4F3FF",     // Ultra light purple
+        100: "#EDE9FE",    // Very light purple
+        200: "#DDD6FE",    // Light purple
+        300: "#C4B5FD",    // Medium light purple
+        400: "#A78BFA",    // Medium purple
+        500: "#5750F1",    // Main brand color
+        600: "#4C46E5",    // Darker purple
+        700: "#4338CA",    // Deep purple
+        800: "#3730A3",    // Very dark purple
+        900: "#312E81",    // Ultra dark purple
+      },
+      secondary: {
+        DEFAULT: "#5b2be0", // Secondary brand purple from logo
+        50: "#F5F3FF",
+        100: "#EDE9FE", 
+        200: "#DDD6FE",
+        300: "#C4B5FD",
+        400: "#A78BFA",
+        500: "#5b2be0",
+        600: "#7C3AED",
+        700: "#6D28D9",
+        800: "#5B21B6",
+        900: "#4C1D95",
+      },
+      accent: {
+        DEFAULT: "#10B981", // Green accent for success states
+        50: "#ECFDF5",
+        100: "#D1FAE5",
+        200: "#A7F3D0", 
+        300: "#6EE7B7",
+        400: "#34D399",
+        500: "#10B981",
+        600: "#059669",
+        700: "#047857",
+        800: "#065F46",
+        900: "#064E3B",
+      },
+      warning: {
+        DEFAULT: "#F59E0B", // Amber for warnings
+        50: "#FFFBEB",
+        100: "#FEF3C7",
+        200: "#FDE68A",
+        300: "#FCD34D", 
+        400: "#FBBF24",
+        500: "#F59E0B",
+        600: "#D97706",
+        700: "#B45309",
+        800: "#92400E",
+        900: "#78350F",
+      },
       stroke: "#E6EBF1",
       "stroke-dark": "#27303E",
       meta: {
