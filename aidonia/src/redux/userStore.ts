@@ -25,6 +25,7 @@ interface UserState {
   setUser: (user: User) => void;
   logout: () => void;
   isAuthenticated: () => boolean;
+  isTokenExpired: () => boolean;
   loadUserFromStorage: () => void;
   updateUserProfile: (profileData: Partial<User>) => void;
 }
@@ -41,45 +42,48 @@ const useUserStore = create<UserState>((set, get) => ({
   logout: () => {
     console.log("🧹 UserStore: Clearing user state...");
     set({ user: null });
-    
+
     // Clear all authentication data
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
-      
+
       // ✅ CRITICAL: Clear cookies too for middleware
-      document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
-      
+      document.cookie =
+        "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+
       // Also clear any session storage
       sessionStorage.clear();
-      
-      console.log("✅ UserStore: All authentication data cleared including cookies");
+
+      console.log(
+        "✅ UserStore: All authentication data cleared including cookies"
+      );
     }
   },
   isAuthenticated: () => {
     const { user } = get();
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
     if (!user || !token) {
       return false;
     }
 
     // Validate JWT token
     try {
-      const tokenParts = token.split('.');
+      const tokenParts = token.split(".");
       if (tokenParts.length !== 3) {
         console.warn("Invalid JWT token format");
         return false;
       }
 
       const payload = JSON.parse(atob(tokenParts[1]));
-      
+
       // Check if token is expired
       if (payload.exp && Date.now() >= payload.exp * 1000) {
         console.warn("JWT token is expired");
-        // Auto-logout when token is expired
-        get().logout();
+        // Don't call logout during render - let the component handle it
         return false;
       }
 
@@ -87,6 +91,27 @@ const useUserStore = create<UserState>((set, get) => ({
     } catch (error) {
       console.error("Error validating token:", error);
       return false;
+    }
+  },
+  // New method to check token expiration without side effects
+  isTokenExpired: () => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+    if (!token) {
+      return true;
+    }
+
+    try {
+      const tokenParts = token.split(".");
+      if (tokenParts.length !== 3) {
+        return true;
+      }
+
+      const payload = JSON.parse(atob(tokenParts[1]));
+      return payload.exp && Date.now() >= payload.exp * 1000;
+    } catch {
+      return true;
     }
   },
   loadUserFromStorage: () => {
@@ -115,7 +140,7 @@ const useUserStore = create<UserState>((set, get) => ({
       if (typeof window !== "undefined") {
         localStorage.setItem("user", JSON.stringify(updatedUser));
       }
-    }  
+    }
   },
 }));
 

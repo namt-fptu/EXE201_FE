@@ -9,8 +9,8 @@ const nextConfig: NextConfig = {
     turbo: {
       rules: {
         // Custom Turbopack rules can be added here
-      }
-    }
+      },
+    },
   },
 
   // ✅ COMPRESSION: Enable compression for better performance
@@ -28,7 +28,7 @@ const nextConfig: NextConfig = {
       },
     ],
     // Enable modern image formats
-    formats: ['image/webp', 'image/avif'],
+    formats: ["image/webp", "image/avif"],
     // Optimize image sizes
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
 
   // ✅ COMPILER: SWC optimizations
   swcMinify: true,
-  
+
   // ✅ WEBPACK: Custom webpack optimizations
   webpack: (config, { dev, isServer }) => {
     // Optimize for development
@@ -48,31 +48,33 @@ const nextConfig: NextConfig = {
       };
     }
 
-    // Bundle analysis support
-    if (process.env.ANALYZE === 'true') {
-      const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
-      config.plugins.push(
-        new BundleAnalyzerPlugin({
-          analyzerMode: 'server',
-          openAnalyzer: true,
-        })
-      );
-    }
+    // Bundle analysis support (disabled for now to avoid issues)
+    // if (process.env.ANALYZE === 'true') {
+    //   const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+    //   config.plugins.push(
+    //     new BundleAnalyzerPlugin({
+    //       analyzerMode: 'server',
+    //       openAnalyzer: true,
+    //     })
+    //   );
+    // }
 
     // Optimize imports for heavy libraries
     config.resolve.alias = {
       ...config.resolve.alias,
       // Reduce apexcharts bundle size
-      'apexcharts': 'apexcharts/dist/apexcharts.common.js',
+      apexcharts: "apexcharts/dist/apexcharts.common.js",
     };
 
     return config;
   },
 
-  // ✅ POWER PACK: Additional optimizations  
+  // ✅ POWER PACK: Additional optimizations
   poweredByHeader: false, // Remove X-Powered-By header
-  reactStrictMode: true,  // Enable React strict mode for better development
+  reactStrictMode: true, // Enable React strict mode for better development
 
   // ✅ OUTPUT: Optimize output for faster builds
-  output: 'standalone', // Better for production deployment
+  output: "standalone", // Better for production deployment
 };
+
+export default nextConfig;

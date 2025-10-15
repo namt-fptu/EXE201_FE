@@ -3,24 +3,82 @@ import { AppDispatch } from "@/redux/store";
 import { useDispatch } from "react-redux";
 
 import { removeItemFromWishlist } from "@/redux/features/wishlist-slice";
-import { addItemToCart } from "@/redux/features/cart-slice";
+import { removeFromFavorites } from "@/services/favorites";
+import { formatVNDNumber } from "@/utils/currency";
+import { getImageUrl } from "@/utils/image-helper";
+import { toast } from "react-hot-toast";
 
 import Image from "next/image";
 
-const SingleItem = ({ item }) => {
+interface WishlistItem {
+  id: number; // This should be the favorites table ID for deletion
+  postId?: number; // The actual post ID
+  title: string;
+  description?: string;
+  price?: number;
+  discountedPrice?: number;
+  image?: string;
+  imageUrl?: string;
+  category?: string;
+  categoryName?: string;
+  favoriteId?: number; // Backup field name
+  userId?: number;
+  imgs?: {
+    thumbnails?: string[];
+  };
+}
+
+interface SingleItemProps {
+  item: WishlistItem;
+  onRemove?: () => void;
+}
+
+const SingleItem = ({ item, onRemove }: SingleItemProps) => {
   const dispatch = useDispatch<AppDispatch>();
 
-  const handleRemoveFromWishlist = () => {
-    dispatch(removeItemFromWishlist(item.id));
-  };
+  const handleRemoveFromWishlist = async () => {
+    try {
+      toast.loading("Removing item from wishlist...");
 
-  const handleAddToCart = () => {
-    dispatch(
-      addItemToCart({
-        ...item,
-        quantity: 1,
-      })
-    );
+      // Debug: Log item structure to understand ID fields
+      console.log("Removing item:", item);
+      console.log("Available IDs:", {
+        id: item.id,
+        favoriteId: item.favoriteId,
+        postId: item.postId,
+        userId: item.userId,
+      });
+
+      // The ID from the wishlist API response should be the favorites table ID
+      const favoriteIdToDelete = item.favoriteId || item.id;
+
+      console.log("Using favoriteId for deletion:", favoriteIdToDelete);
+
+      if (!favoriteIdToDelete) {
+        toast.dismiss();
+        toast.error("Cannot remove item: Invalid favorite ID");
+        return;
+      }
+
+      // Call the DELETE API to remove from favorites
+      await removeFromFavorites(favoriteIdToDelete);
+
+      // Remove from Redux store (local state) using postId if available, otherwise use id
+      const itemIdForRedux = item.postId || item.id;
+      dispatch(removeItemFromWishlist(itemIdForRedux));
+
+      toast.dismiss();
+      toast.success("Item removed from wishlist");
+
+      // Call parent component's onRemove callback to refresh the list
+      if (onRemove) {
+        onRemove();
+      }
+    } catch (error) {
+      toast.dismiss();
+      console.error("Error removing from wishlist:", error);
+      toast.error("Failed to remove item from wishlist");
+    }
   };
 
   return (
@@ -56,58 +114,66 @@ const SingleItem = ({ item }) => {
       <div className="min-w-[387px]">
         <div className="flex items-center justify-between gap-5">
           <div className="w-full flex items-center gap-5.5">
-            <div className="flex items-center justify-center rounded-[5px] bg-gray-2 max-w-[80px] w-full h-17.5">
-              <Image src={item.imgs?.thumbnails[0]} alt="product" width={200} height={200} />
+            <div className="flex items-center justify-center rounded-[5px] bg-gray-2 max-w-[80px] w-full h-17.5 overflow-hidden">
+              <Image
+                src={getImageUrl(item)}
+                alt={item.title || "Product image"}
+                width={80}
+                height={70}
+                className="object-cover w-full h-full"
+                unoptimized={true}
+              />
             </div>
 
             <div>
               <h3 className="text-dark ease-out duration-200 hover:text-blue">
                 <a href="#"> {item.title} </a>
               </h3>
+              {item.description && (
+                <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                  {item.description}
+                </p>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       <div className="min-w-[205px]">
-        <p className="text-dark">${item.discountedPrice}</p>
+        <p className="text-dark font-medium">
+          {formatVNDNumber(item.price || item.discountedPrice || 0)}
+        </p>
       </div>
 
       <div className="min-w-[265px]">
         <div className="flex items-center gap-1.5">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M9.99935 14.7917C10.3445 14.7917 10.6243 14.5119 10.6243 14.1667V9.16669C10.6243 8.82151 10.3445 8.54169 9.99935 8.54169C9.65417 8.54169 9.37435 8.82151 9.37435 9.16669V14.1667C9.37435 14.5119 9.65417 14.7917 9.99935 14.7917Z"
-              fill="#F23030"
-            />
-            <path
-              d="M9.99935 5.83335C10.4596 5.83335 10.8327 6.20645 10.8327 6.66669C10.8327 7.12692 10.4596 7.50002 9.99935 7.50002C9.53911 7.50002 9.16602 7.12692 9.16602 6.66669C9.16602 6.20645 9.53911 5.83335 9.99935 5.83335Z"
-              fill="#F23030"
-            />
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M1.04102 10C1.04102 5.05247 5.0518 1.04169 9.99935 1.04169C14.9469 1.04169 18.9577 5.05247 18.9577 10C18.9577 14.9476 14.9469 18.9584 9.99935 18.9584C5.0518 18.9584 1.04102 14.9476 1.04102 10ZM9.99935 2.29169C5.74215 2.29169 2.29102 5.74283 2.29102 10C2.29102 14.2572 5.74215 17.7084 9.99935 17.7084C14.2565 17.7084 17.7077 14.2572 17.7077 10C17.7077 5.74283 14.2565 2.29169 9.99935 2.29169Z"
-              fill="#F23030"
-            />
-          </svg>
-
-          <span className="text-red"> Out of Stock </span>
+          <span className="px-3 py-1 bg-blue-50 text-blue rounded-full text-sm">
+            {item.category || item.categoryName || "General"}
+          </span>
         </div>
       </div>
 
       <div className="min-w-[150px] flex justify-end">
         <button
-          onClick={() => handleAddToCart()}
-          className="inline-flex text-dark hover:text-white bg-gray-1 border border-gray-3 py-2.5 px-6 rounded-md ease-out duration-200 hover:bg-blue hover:border-gray-3"
+          onClick={() => handleRemoveFromWishlist()}
+          className="inline-flex items-center gap-2 text-dark hover:text-white bg-gray-1 border border-gray-3 py-2.5 px-4 rounded-md ease-out duration-200 hover:bg-red hover:border-red"
         >
-          Add to Cart
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4m2 0v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4h9.334z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Remove
         </button>
       </div>
     </div>

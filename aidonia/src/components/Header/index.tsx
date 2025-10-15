@@ -16,12 +16,20 @@ const Header = () => {
   const [userDropdown, setUserDropdown] = useState(false);
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const { user, isAuthenticated, logout } = useUserStore();
+  const { user, isAuthenticated, logout, isTokenExpired } = useUserStore();
 
   // Click outside handler for user dropdown
   const userDropdownRef = useClickOutside<HTMLDivElement>(() => {
     setUserDropdown(false);
   });
+
+  // Check for token expiration and handle logout
+  useEffect(() => {
+    if (user && isTokenExpired()) {
+      console.log("Token expired, logging out user");
+      logout();
+    }
+  }, [user, isTokenExpired, logout]);
 
   // Sticky menu
   const handleStickyMenu = () => {
@@ -236,7 +244,7 @@ const Header = () => {
                         {user.avataImage ? (
                           <Image
                             src={user.avataImage}
-                            alt={user.userName || 'User'}
+                            alt={user.userName || "User"}
                             width={40}
                             height={40}
                             className="w-full h-full object-cover"
@@ -244,7 +252,9 @@ const Header = () => {
                         ) : (
                           <div className="w-full h-full bg-blue flex items-center justify-center">
                             <span className="text-white font-medium text-sm">
-                              {user.userName ? user.userName.charAt(0).toUpperCase() : 'U'}
+                              {user.userName
+                                ? user.userName.charAt(0).toUpperCase()
+                                : "U"}
                             </span>
                           </div>
                         )}
@@ -254,7 +264,7 @@ const Header = () => {
                           Welcome
                         </span>
                         <p className="font-medium text-custom-sm text-dark">
-                          {user.userName || 'User'}
+                          {user.userName || "User"}
                         </p>
                       </div>
                       <svg
@@ -304,7 +314,9 @@ const Header = () => {
                           <button
                             onClick={async () => {
                               setUserDropdown(false);
-                              const { logoutUser } = await import("@/services/auth");
+                              const { logoutUser } = await import(
+                                "@/services/auth"
+                              );
                               await logoutUser();
                             }}
                             className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-1 transition-colors"

@@ -31,6 +31,7 @@
     "react": "19.1.0",
     "react-apexcharts": "^1.7.0",
     "react-dom": "19.1.0",
+    "react-hot-toast": "^2.6.0",
     "react-range-slider-input": "^3.2.1",
     "react-redux": "^9.2.0",
     "sonner": "^2.0.7",
