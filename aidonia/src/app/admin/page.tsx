@@ -90,13 +90,7 @@ function AdminPageContent({
           <h1 className="text-3xl font-bold text-slate-900">Aidonia Dashboard</h1>
           <p className="text-slate-700 mt-1 font-semibold">Welcome to Aidonia admin dashboard</p>
         </div>
-        <div className="flex items-center gap-3">
-          <select className="border border-primary-300 rounded-lg px-3 py-2 bg-white text-slate-900 font-semibold focus:border-primary-500 focus:ring-2 focus:ring-primary-200">
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="90d">Last 90 days</option>
-          </select>
-        </div>
+      
       </div>
 
       {/* Quick Stats */}
