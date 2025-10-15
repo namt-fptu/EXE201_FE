@@ -79,6 +79,33 @@ export const postsService = {
     }
 
     const response = await api.get<PostsResponse>(`/posts?${params}`);
+
+    // Normalize postImages shape for consistency with getPaged
+    try {
+      const data = response.data;
+      if (Array.isArray(data.data)) {
+        data.data = data.data.map((it: any) => {
+          const normalizeImages = (imgs: any[] | undefined) => {
+            if (!imgs) return [] as PostImage[];
+            return imgs.map((img: any, idx: number) => {
+              if (!img) return { id: String(idx), url: "" } as PostImage;
+              if (typeof img === 'string') return { id: img.split('/').pop() ?? String(idx), url: img } as PostImage;
+              const url = img.url ?? img.downloadURL ?? img.path ?? img;
+              const id = String(img.id ?? img._id ?? img.publicId ?? idx);
+              return { id, url } as PostImage;
+            });
+          };
+
+          return {
+            ...it,
+            postImages: normalizeImages(it.postImages ?? it.images ?? []),
+          };
+        });
+      }
+    } catch (err) {
+      // ignore normalization errors and return original response
+    }
+
     return response.data;
   },
 
@@ -116,6 +143,21 @@ export const postsService = {
         const priceNum = typeof it.price === 'number' ? it.price : Number(it.price || 0);
         const priceFormatted = new Intl.NumberFormat('vi-VN').format(priceNum) + ' VND';
 
+        // Normalize postImages to always be array of objects { id, url }
+        const normalizeImages = (imgs: any[] | undefined) => {
+          if (!imgs) return [] as PostImage[];
+          return imgs.map((it: any, idx: number) => {
+            if (!it) return { id: String(idx), url: "" } as PostImage;
+            if (typeof it === 'string') {
+              return { id: it.split('/').pop() ?? String(idx), url: it } as PostImage;
+            }
+            // If it's already an object, try to pick id and url fields
+            const url = it.url ?? it.downloadURL ?? it.path ?? it;
+            const id = String(it.id ?? it._id ?? it.publicId ?? idx);
+            return { id, url } as PostImage;
+          });
+        };
+
         return {
           id: String(it.id ?? it._id ?? ''),
           title: it.title ?? it.name ?? '',
@@ -130,7 +172,7 @@ export const postsService = {
           authorId: it.userId ?? it.authorId,
           authorName: it.authorName ?? it.userName ?? it.user?.name,
           authorEmail: it.authorEmail ?? it.userEmail ?? it.user?.email,
-          postImages: it.postImages ?? it.images ?? [],
+          postImages: normalizeImages(it.postImages ?? it.images ?? []),
           createdAt: it.createdAt,
           updatedAt: it.updatedAt,
         } as Post;
