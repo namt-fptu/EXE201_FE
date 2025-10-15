@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Post } from "@/services/postsServiceWithAxios";
-import Image from "next/image";
+import SafeImage from '@/components/Common/SafeImage';
 
 interface PostDetailModalProps {
   postId: string;
@@ -120,7 +120,7 @@ export default function PostDetailModal({
               <div className="space-y-4">
                 <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-100">
                   {post.postImages && post.postImages.length > 0 ? (
-                    <Image
+                    <SafeImage
                       src={post.postImages[currentImageIndex]?.url || "/images/placeholder.png"}
                       alt={post.title}
                       fill
@@ -158,7 +158,7 @@ export default function PostDetailModal({
                             : "ring-1 ring-gray-200"
                         }`}
                       >
-                        <Image
+                        <SafeImage
                           src={image.url}
                           alt={`${post.title} - ${index + 1}`}
                           fill

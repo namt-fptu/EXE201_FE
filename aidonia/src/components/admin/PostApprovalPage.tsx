@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import SafeImage from '@/components/Common/SafeImage';
 import { toast } from "sonner";
 import { Post, postsService } from "@/services/postsServiceWithAxios";
 import { dashboardService } from "@/services/dashboard";
@@ -416,20 +417,23 @@ export default function PostApprovalPage() {
                       onClick={() => handleViewDetail(post.id)}
                       className="flex items-center gap-3 text-left hover:opacity-80"
                     >
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-primary-600">
-                        <svg
-                          className="h-5 w-5"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                          <path
-                            fillRule="evenodd"
-                            d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full overflow-hidden bg-primary-100 text-primary-600">
+                          {/* Small thumbnail (use first post image if available) - normalize src */}
+                          {(() => {
+                            const raw = post.postImages && post.postImages.length > 0 ? post.postImages[0].url : '/images/placeholder.png';
+                            // If src is a relative string without leading slash, add leading slash
+                            const thumbUrl = typeof raw === 'string' && !/^https?:\/\//i.test(raw) ? (raw.startsWith('/') ? raw : '/' + raw) : raw;
+                            return (
+                              <SafeImage
+                                src={String(thumbUrl)}
+                                alt={post.title}
+                                width={36}
+                                height={36}
+                                className="object-cover"
+                              />
+                            );
+                          })()}
+                        </div>
                       <div>
                         <h5 className="font-semibold text-dark dark:text-white">
                           {post.title}
