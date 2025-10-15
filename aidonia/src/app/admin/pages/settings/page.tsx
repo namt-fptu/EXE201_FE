@@ -14,11 +14,11 @@ export default function SettingsPage() {
       <div className="mx-auto max-w-7xl">
         <Breadcrumb pageName="Settings" />
 
-        <div className="grid grid-cols-5 gap-8">
-          <div className="col-span-5 xl:col-span-3">
+        {/* Center the settings card horizontally */}
+        <div className="flex justify-center">
+          <div className="w-full max-w-3xl">
             <PersonalInfoForm />
           </div>
-
         </div>
       </div>
     </AdminLayout>

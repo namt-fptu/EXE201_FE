@@ -81,11 +81,8 @@ export default function PostDetailModal({
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(price);
-  };
+  return new Intl.NumberFormat("en-US").format(price) + " VND";
+};
 
   if (!isOpen) return null;
 

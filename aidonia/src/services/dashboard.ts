@@ -29,6 +29,52 @@ export const dashboardService = {
     }
   },
 
+  getTotalPosts: async (): Promise<{ isSuccess: boolean; data: number; message: string }> => {
+    try {
+      const response = await api.get<{ isSuccess: boolean; data: number; message: string }>('/statistical/total-posts');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching total posts:', error);
+      return {
+        isSuccess: false,
+        data: 0,
+        message: 'Failed to fetch total posts'
+      };
+    }
+  },
+
+  getTotalActivePosts: async (): Promise<{ isSuccess: boolean; data: number; message: string }> => {
+    try {
+      const response = await api.get<{ isSuccess: boolean; data: number; message: string }>(
+        '/statistical/total-active-posts'
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching total active posts:', error);
+      return {
+        isSuccess: false,
+        data: 0,
+        message: 'Failed to fetch total active posts'
+      };
+    }
+  },
+
+  getTotalInactivePosts: async (): Promise<{ isSuccess: boolean; data: number; message: string }> => {
+    try {
+      const response = await api.get<{ isSuccess: boolean; data: number; message: string }>(
+        '/statistical/total-inactive-posts'
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching total inactive posts:', error);
+      return {
+        isSuccess: false,
+        data: 0,
+        message: 'Failed to fetch total inactive posts'
+      };
+    }
+  },
+
   getStats: async (): Promise<DashboardResponse> => {
     try {
       const response = await api.get<DashboardResponse>('/dashboard/stats');

@@ -3,12 +3,15 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Post, postsService } from "@/services/postsServiceWithAxios";
+import { dashboardService } from "@/services/dashboard";
 import PostDetailModal from "./PostDetailModal";
 import ConfirmDialog from "./ConfirmDialog";
 
 export default function PostApprovalPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [approvedTotal, setApprovedTotal] = useState<number | null>(null);
+  const [rejectedTotal, setRejectedTotal] = useState<number | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,12 +32,37 @@ export default function PostApprovalPage() {
   const loadPosts = async () => {
     try {
       setIsLoading(true);
-      const response = await postsService.getAll(1, 100);
+      // Load posts and statistical totals in parallel
+      const [postsResp, activeResp, inactiveResp] = await Promise.all([
+        postsService.getAll(1, 100),
+        dashboardService.getTotalActivePosts(),
+        dashboardService.getTotalInactivePosts(),
+      ]);
 
-      if (response.isSuccess) {
-        setPosts(response.data);
+      if (postsResp.isSuccess) {
+        setPosts(postsResp.data);
       } else {
-        toast.error(response.message || "Unable to load post list");
+        toast.error(postsResp.message || "Unable to load post list");
+      }
+
+      // Fallback counts from the loaded posts if statistical endpoints fail
+      const fallbackApproved = postsResp.isSuccess
+        ? postsResp.data.filter((p) => p.status === 'APPROVED').length
+        : 0;
+      const fallbackRejected = postsResp.isSuccess
+        ? postsResp.data.filter((p) => p.status === 'REJECTED').length
+        : 0;
+
+      if (activeResp?.isSuccess) {
+        setApprovedTotal(activeResp.data);
+      } else {
+        setApprovedTotal(fallbackApproved);
+      }
+
+      if (inactiveResp?.isSuccess) {
+        setRejectedTotal(inactiveResp.data);
+      } else {
+        setRejectedTotal(fallbackRejected);
       }
     } catch (error) {
       console.error("Error loading posts:", error);
@@ -230,57 +258,53 @@ export default function PostApprovalPage() {
 
       {/* Stats Cards */}
       <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6 xl:grid-cols-3 2xl:gap-7.5">
-        {/* Pending Posts */}
-        <div className="rounded-[10px] border border-warning-200 bg-gradient-to-br from-white to-warning-50/50 px-7.5 py-6 shadow-lg shadow-warning-100/25 hover:shadow-xl hover:shadow-warning-200/30 transition-all duration-300">
-          <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full bg-warning-100">
-            <svg className="fill-warning-600" width="22" height="22" viewBox="0 0 20 20" fill="none">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
-            </svg>
-          </div>
-          <div className="mt-4 flex items-end justify-between">
-            <div>
-              <h4 className="text-title-md font-bold text-slate-900">
-                {pendingCount}
-              </h4>
-              <span className="text-body-sm font-semibold text-warning-700">Pending Review</span>
-            </div>
-          </div>
-        </div>
 
-        {/* Approved Posts */}
-        <div className="rounded-[10px] border border-green-200 bg-gradient-to-br from-white to-green-50/50 px-7.5 py-6 shadow-lg shadow-green-100/25 hover:shadow-xl hover:shadow-green-200/30 transition-all duration-300">
-          <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full bg-green-100">
-            <svg className="fill-green-600" width="22" height="22" viewBox="0 0 20 20" fill="none">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-            </svg>
-          </div>
-          <div className="mt-4 flex items-end justify-between">
-            <div>
-              <h4 className="text-title-md font-bold text-slate-900">
-                {approvedCount}
-              </h4>
-              <span className="text-body-sm font-semibold text-green-700">Approved Posts</span>
-            </div>
-          </div>
-        </div>
+  
 
-        {/* Rejected Posts */}
-        <div className="rounded-[10px] border border-red-200 bg-gradient-to-br from-white to-red-50/50 px-7.5 py-6 shadow-lg shadow-red-100/25 hover:shadow-xl hover:shadow-red-200/30 transition-all duration-300">
-          <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full bg-red-100">
-            <svg className="fill-red-600" width="22" height="22" viewBox="0 0 20 20" fill="none">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/>
-            </svg>
-          </div>
-          <div className="mt-4 flex items-end justify-between">
-            <div>
-              <h4 className="text-title-md font-bold text-slate-900">
-                {rejectedCount}
-              </h4>
-              <span className="text-body-sm font-semibold text-red-700">Rejected Posts</span>
-            </div>
-          </div>
-        </div>
-      </div>
+  {/* ✅ Approved Posts - FIXED */}
+  <div className="rounded-[10px] border px-7.5 py-6 shadow-lg transition-all duration-300"
+     style={{ 
+       borderColor: '#BBF7D0',        // border-green-200
+       background: 'linear-gradient(to bottom right, #FFFFFF, #ECFDF5)', // green-50
+       boxShadow: '0 2px 8px rgba(16, 185, 129, 0.15)'
+     }}
+>
+  <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full" style={{ backgroundColor: '#D1FAE5' }}>
+    <svg className="fill-green-600" width="22" height="22" viewBox="0 0 20 20" fill="none">
+      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+    </svg>
+  </div>
+  <div className="mt-4">
+    <h4 className="text-title-md font-bold text-slate-900">{approvedTotal ?? approvedCount}</h4>
+    <span className="text-body-sm font-semibold" style={{ color: '#047857' }}>Approved Posts</span>
+  </div>
+</div>
+
+  {/* Rejected Posts */}
+  <div className="rounded-[10px] border px-7.5 py-6 shadow-lg transition-all duration-300"
+     style={{
+       borderColor: '#FECACA', // red-200
+       background: 'linear-gradient(to bottom right, #FFFFFF, #FEF2F2)', // red-50
+       boxShadow: '0 2px 8px rgba(239, 68, 68, 0.08)'
+     }}
+  >
+    <div className="flex h-11.5 w-11.5 items-center justify-center rounded-full" style={{ backgroundColor: '#FEE2E2' }}>
+      <svg className="fill-red-600" width="22" height="22" viewBox="0 0 20 20" fill="none">
+        <path fillRule="evenodd" d="M6 18L18 6M6 6l12 12" clipRule="evenodd" />
+      </svg>
+    </div>
+    <div className="mt-4">
+      <h4 className="text-title-md font-bold text-slate-900">{rejectedTotal ?? rejectedCount}</h4>
+      <span className="text-body-sm font-semibold" style={{ color: '#B91C1C' }}>Rejected Posts</span>
+    </div>
+  </div>
+
+
+
+</div>
+
+
+
 
       {/* Posts Table */}
       <div className="rounded-[10px] border border-stroke bg-white px-7.5 py-6 shadow-1 dark:border-dark-3 dark:bg-gray-dark dark:shadow-card">
