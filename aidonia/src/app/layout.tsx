@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import AuthProvider from "@/components/AuthProvider";
 import ErrorBoundary from "@/components/Common/ErrorBoundary";
+import ChatBubble from "@/components/Chat/ChatBubble";
 import { Toaster } from "sonner";
 import fs from "fs";
 import path from "path";
@@ -52,9 +53,10 @@ export default function RootLayout({
         <ErrorBoundary>
           <AuthProvider>
             {children}
+            <ChatBubble />
           </AuthProvider>
         </ErrorBoundary>
-        <Toaster 
+        <Toaster
           position="top-right"
           richColors
           closeButton

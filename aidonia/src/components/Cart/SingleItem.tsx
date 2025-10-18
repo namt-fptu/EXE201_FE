@@ -56,7 +56,7 @@ const SingleItem = ({ item }) => {
       });
       return;
     }
-    
+
     setIsLoading(true);
     try {
       const newQuantity = quantity - 1;
@@ -81,7 +81,12 @@ const SingleItem = ({ item }) => {
         <div className="flex items-center justify-between gap-5">
           <div className="w-full flex items-center gap-5.5">
             <div className="flex items-center justify-center rounded-[5px] bg-gray-2 max-w-[80px] w-full h-17.5">
-              <Image width={200} height={200} src={item.imgs?.thumbnails[0]} alt="product" />
+              <Image
+                width={200}
+                height={200}
+                src={item.imgs?.thumbnails[0]}
+                alt="product"
+              />
             </div>
 
             <div>
@@ -94,7 +99,9 @@ const SingleItem = ({ item }) => {
       </div>
 
       <div className="min-w-[180px]">
-        <p className="text-dark">${item.discountedPrice}</p>
+        <p className="text-dark">
+          {item.discountedPrice.toLocaleString("vi-VN")}₫
+        </p>
       </div>
 
       <div className="min-w-[275px]">
@@ -160,7 +167,9 @@ const SingleItem = ({ item }) => {
       </div>
 
       <div className="min-w-[200px]">
-        <p className="text-dark">${item.discountedPrice * quantity}</p>
+        <p className="text-dark">
+          {(item.discountedPrice * quantity).toLocaleString("vi-VN")}₫
+        </p>
       </div>
 
       <div className="min-w-[50px] flex justify-end">
@@ -197,9 +206,9 @@ const SingleItem = ({ item }) => {
               />
               <path
                 d="M13.3601 9.39928C13.7379 9.43706 14.0135 9.77397 13.9758 10.1518L13.5174 14.7351C13.4796 15.1129 13.1427 15.3886 12.7649 15.3508C12.3871 15.313 12.1115 14.9761 12.1492 14.5983L12.6076 10.015C12.6454 9.63715 12.9823 9.3615 13.3601 9.39928Z"
-              fill=""
-            />
-          </svg>
+                fill=""
+              />
+            </svg>
           )}
         </button>
       </div>

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Breadcrumb from "../Common/Breadcrumb";
 import Image from "next/image";
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import api from "@/services/axios";
 import { AxiosError } from "axios";
 import packageService from "@/services/packageService";
+import { uploadImage } from "@/services/firebaseUtils";
 import {
   handleApiResponse,
   handleApiError,
@@ -69,6 +70,10 @@ const MyAccount = () => {
   const [postsLoading, setPostsLoading] = useState(false);
   const [userAddresses, setUserAddresses] = useState<Address[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
+
+  // Avatar upload states
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Address editing states
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
@@ -582,6 +587,109 @@ const MyAccount = () => {
     }
   };
 
+  // Avatar upload handlers
+  const handleAvatarClick = () => {
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      showErrorToast("Please select an image file", {
+        description: "Only image files are allowed",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      showErrorToast("File size too large", {
+        description: "Please select an image smaller than 5MB",
+      });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    const uploadingToast = showLoadingToast("Uploading avatar...");
+
+    try {
+      // Upload to Firebase Storage
+      console.log("Uploading avatar to Firebase...");
+      const avatarUrl = await uploadImage(file, "avatars", user.id.toString());
+      console.log("Avatar uploaded successfully:", avatarUrl);
+
+      // Dismiss uploading toast
+      toast.dismiss(uploadingToast);
+
+      // Update avatar via API
+      const updateToast = showLoadingToast("Updating profile...");
+
+      try {
+        const response = await api.post(`users/avatar/${user.id}`, {
+          avatar: avatarUrl,
+        });
+
+        // Dismiss updating toast
+        toast.dismiss(updateToast);
+
+        handleApiResponse(response, {
+          successMessage: "Avatar updated successfully!",
+          context: "update avatar",
+          showDataInfo: false,
+        });
+
+        // Update local user store with new avatar
+        const { setUser } = useUserStore.getState();
+        setUser({
+          ...user,
+          avataImage: avatarUrl,
+        });
+
+        showSuccessToast("Avatar updated successfully!", {
+          description: "Your profile picture has been updated",
+        });
+      } catch (apiError) {
+        console.error("Error updating avatar via API:", apiError);
+        toast.dismiss(updateToast);
+
+        // Even if API fails, we still have the image in Firebase
+        // Update local state so user sees the change
+        const { setUser } = useUserStore.getState();
+        setUser({
+          ...user,
+          avataImage: avatarUrl,
+        });
+
+        handleApiError(apiError, {
+          context: "update avatar via API",
+          customMessage: "Avatar uploaded but failed to update profile",
+          showDetails: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      toast.dismiss(uploadingToast);
+
+      handleApiError(error, {
+        context: "upload avatar",
+        customMessage: "Failed to update avatar",
+        showDetails: true,
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+      // Reset file input
+      if (event.target) {
+        event.target.value = "";
+      }
+    }
+  };
+
   return (
     <>
       <Breadcrumb title={"My Account"} pages={["my account"]} />
@@ -593,17 +701,40 @@ const MyAccount = () => {
             <div className="xl:max-w-[370px] w-full bg-white rounded-xl shadow-1">
               <div className="flex xl:flex-col">
                 <div className="hidden lg:flex flex-wrap items-center gap-5 py-6 px-4 sm:px-7.5 xl:px-9 border-r xl:border-r-0 xl:border-b border-gray-3">
-                  <div className="max-w-[64px] w-full h-16 rounded-full overflow-hidden border border-gray-3">
+                  {/* Hidden file input */}
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+
+                  {/* Clickable avatar */}
+                  <div
+                    onClick={handleAvatarClick}
+                    className="max-w-[64px] w-full h-16 rounded-full overflow-hidden border border-gray-3 cursor-pointer relative group transition-all hover:border-blue hover:shadow-lg"
+                    title="Click to change avatar"
+                  >
                     {user?.avataImage ? (
                       <Image
                         src={user.avataImage}
                         alt="user"
                         width={64}
                         height={64}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-opacity group-hover:opacity-75"
+                        unoptimized={user.avataImage.includes(
+                          "firebasestorage.googleapis.com"
+                        )}
+                        onError={(e) => {
+                          console.error(
+                            "Failed to load avatar in MyAccount:",
+                            user.avataImage
+                          );
+                        }}
                       />
                     ) : (
-                      <div className="w-full h-full bg-blue flex items-center justify-center">
+                      <div className="w-full h-full bg-blue flex items-center justify-center transition-colors group-hover:bg-blue-600">
                         <span className="text-white font-semibold text-xl">
                           {(userProfile?.userName || user?.userName || "U")
                             .charAt(0)
@@ -611,6 +742,33 @@ const MyAccount = () => {
                         </span>
                       </div>
                     )}
+
+                    {/* Upload overlay on hover */}
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      {isUploadingAvatar ? (
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                      ) : (
+                        <svg
+                          className="w-6 h-6 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                      )}
+                    </div>
                   </div>
 
                   <div>
@@ -1030,10 +1188,10 @@ const MyAccount = () => {
                             <div>
                               <span className="text-gray-500">Price:</span>
                               <p className="font-medium text-blue">
-                                $
                                 {pkg.price
-                                  ? (pkg.price / 100).toFixed(2)
-                                  : "0.00"}
+                                  ? (pkg.price / 100).toLocaleString("vi-VN")
+                                  : "0"}
+                                ₫
                               </p>
                             </div>
                             <div>
@@ -1168,10 +1326,12 @@ const MyAccount = () => {
                               </td>
                               <td className="py-4 px-4">
                                 <p className="font-medium text-blue text-sm">
-                                  $
                                   {payment.amount
-                                    ? (payment.amount / 100).toFixed(2)
-                                    : "0.00"}
+                                    ? (payment.amount / 100).toLocaleString(
+                                        "vi-VN"
+                                      )
+                                    : "0"}
+                                  ₫
                                 </p>
                               </td>
                               <td className="py-4 px-4">

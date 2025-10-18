@@ -18,6 +18,17 @@ const Header = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const { user, isAuthenticated, logout, isTokenExpired } = useUserStore();
 
+  // Debug: Log user avatar info
+  useEffect(() => {
+    if (user) {
+      console.log("🎨 Header: User avatar info:", {
+        hasAvatar: !!user.avataImage,
+        avatarUrl: user.avataImage,
+        userName: user.userName,
+      });
+    }
+  }, [user]);
+
   // Click outside handler for user dropdown
   const userDropdownRef = useClickOutside<HTMLDivElement>(() => {
     setUserDropdown(false);
@@ -248,6 +259,16 @@ const Header = () => {
                             width={40}
                             height={40}
                             className="w-full h-full object-cover"
+                            unoptimized={user.avataImage.includes(
+                              "firebasestorage.googleapis.com"
+                            )}
+                            onError={(e) => {
+                              console.error(
+                                "Failed to load avatar in Header:",
+                                user.avataImage
+                              );
+                              e.currentTarget.style.display = "none";
+                            }}
                           />
                         ) : (
                           <div className="w-full h-full bg-blue flex items-center justify-center">

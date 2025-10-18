@@ -1,4 +1,4 @@
-import api from './axios';
+import api from "./axios";
 
 export interface PostImage {
   id: string;
@@ -11,9 +11,9 @@ export interface Post {
   title: string;
   description: string;
   price: number;
-  condition: 'NEW' | 'LIKE_NEW' | 'GOOD' | 'FAIR' | 'POOR';
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  condition: "NEW" | "LIKE_NEW" | "GOOD" | "FAIR" | "POOR";
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  priority: "LOW" | "MEDIUM" | "HIGH";
   categoryId: string;
   categoryName: string;
   authorId: string;
@@ -22,6 +22,9 @@ export interface Post {
   postImages: PostImage[];
   createdAt: string;
   updatedAt: string;
+  // Backend also returns these fields
+  userId?: number;
+  userName?: string;
 }
 
 export interface PostsResponse {
@@ -53,13 +56,13 @@ export const postsService = {
       page: page.toString(),
       limit: limit.toString(),
     });
-    
-    if (status && status !== 'ALL') {
-      params.append('status', status);
+
+    if (status && status !== "ALL") {
+      params.append("status", status);
     }
-    
+
     if (search && search.trim()) {
-      params.append('search', search.trim());
+      params.append("search", search.trim());
     }
 
     const response = await api.get<PostsResponse>(`/posts?${params}`);
@@ -74,7 +77,9 @@ export const postsService = {
       return response.data;
     } catch (error: any) {
       console.error(`Error approving post ${postId}:`, error);
-      throw new Error(error.response?.data?.message || 'Failed to approve post.');
+      throw new Error(
+        error.response?.data?.message || "Failed to approve post."
+      );
     }
   },
 
@@ -85,7 +90,20 @@ export const postsService = {
       return response.data;
     } catch (error: any) {
       console.error(`Error rejecting post ${postId}:`, error);
-      throw new Error(error.response?.data?.message || 'Failed to reject post.');
+      throw new Error(
+        error.response?.data?.message || "Failed to reject post."
+      );
+    }
+  },
+
+  // Get post by ID
+  getById: async (postId: number): Promise<PostResponse> => {
+    try {
+      const response = await api.get<PostResponse>(`/posts/${postId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error fetching post ${postId}:`, error);
+      throw new Error(error.response?.data?.message || "Failed to fetch post.");
     }
   },
 };

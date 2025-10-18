@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { AppDispatch } from "@/redux/store";
 import { useDispatch } from "react-redux";
 
@@ -7,6 +7,7 @@ import { removeFromFavorites } from "@/services/favorites";
 import { formatVNDNumber } from "@/utils/currency";
 import { getImageUrl } from "@/utils/image-helper";
 import { toast } from "react-hot-toast";
+import ContactSellerModal from "@/components/Common/ContactSellerModal";
 
 import Image from "next/image";
 
@@ -23,6 +24,17 @@ interface WishlistItem {
   categoryName?: string;
   favoriteId?: number; // Backup field name
   userId?: number;
+  // Image data from API
+  postImages?: Array<string | { url: string }>; // Support for API image format
+  // Seller information
+  seller?: {
+    id?: number;
+    name?: string;
+    phoneNumber?: string;
+  };
+  sellerPhoneNumber?: string; // Direct field
+  sellerName?: string; // Direct field
+  sellerId?: number; // Direct field
   imgs?: {
     thumbnails?: string[];
   };
@@ -35,6 +47,7 @@ interface SingleItemProps {
 
 const SingleItem = ({ item, onRemove }: SingleItemProps) => {
   const dispatch = useDispatch<AppDispatch>();
+  const [showContactModal, setShowContactModal] = useState(false);
 
   const handleRemoveFromWishlist = async () => {
     try {
@@ -122,6 +135,12 @@ const SingleItem = ({ item, onRemove }: SingleItemProps) => {
                 height={70}
                 className="object-cover w-full h-full"
                 unoptimized={true}
+                onError={(e) => {
+                  console.error("Image failed to load:", getImageUrl(item));
+                  // Fallback to placeholder on error
+                  e.currentTarget.src =
+                    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='70' viewBox='0 0 80 70' fill='%23f3f4f6'%3E%3Crect width='80' height='70' fill='%23e5e7eb'/%3E%3Cpath d='M28 25h24v4H28zm0 8h16v4H28zm0 8h20v4H28z' fill='%239ca3af'/%3E%3C/svg%3E";
+                }}
               />
             </div>
 
@@ -153,14 +172,38 @@ const SingleItem = ({ item, onRemove }: SingleItemProps) => {
         </div>
       </div>
 
-      <div className="min-w-[150px] flex justify-end">
+      <div className="min-w-[150px] flex justify-end gap-2">
+        {/* Contact Seller Button */}
         <button
-          onClick={() => handleRemoveFromWishlist()}
-          className="inline-flex items-center gap-2 text-dark hover:text-white bg-gray-1 border border-gray-3 py-2.5 px-4 rounded-md ease-out duration-200 hover:bg-red hover:border-red"
+          onClick={() => setShowContactModal(true)}
+          className="inline-flex items-center gap-2 text-dark hover:text-white bg-gray-1 border border-gray-3 py-2.5 px-4 rounded-md ease-out duration-200 hover:bg-blue hover:border-blue"
         >
           <svg
             width="16"
             height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M8 12h.01M8 8V6m0 0V4a2 2 0 114 0v2M8 6a2 2 0 11-4 0"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Contact
+        </button>
+
+        {/* Remove Button */}
+        <button
+          onClick={() => handleRemoveFromWishlist()}
+          className="inline-flex items-center gap-1 text-gray-500 hover:text-red bg-transparent border border-gray-300 py-2.5 px-3 rounded-md ease-out duration-200 hover:bg-red-50 hover:border-red"
+        >
+          <svg
+            width="14"
+            height="14"
             viewBox="0 0 16 16"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -173,9 +216,29 @@ const SingleItem = ({ item, onRemove }: SingleItemProps) => {
               strokeLinejoin="round"
             />
           </svg>
-          Remove
         </button>
       </div>
+
+      {/* Contact Seller Modal */}
+      <ContactSellerModal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        sellerInfo={{
+          phoneNumber:
+            item.sellerPhoneNumber || item.seller?.phoneNumber || "0123456789", // Fallback for demo
+          sellerId: item.sellerId || item.seller?.id || 1, // Fallback for demo
+          sellerName: item.sellerName || item.seller?.name || "Seller", // Fallback for demo
+        }}
+        item={{
+          id:
+            item.postId && item.postId > 0
+              ? item.postId
+              : item.id && item.id > 0
+                ? item.id
+                : 0,
+          title: item.title,
+        }}
+      />
     </div>
   );
 };

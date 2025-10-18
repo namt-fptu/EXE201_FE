@@ -6,7 +6,10 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table";
-import { compactFormat, standardFormat } from "../../../../app/admin/lib/format-number";
+import {
+  compactFormat,
+  standardFormat,
+} from "../../../../app/admin/lib/format-number";
 import Image from "next/image";
 import { getTopProducts } from "../fetch";
 
@@ -16,9 +19,7 @@ export async function TopProducts() {
   return (
     <div className="rounded-[10px] bg-white shadow-1">
       <div className="px-6 py-4 sm:px-7 sm:py-5 xl:px-8.5">
-        <h2 className="text-2xl font-bold text-slate-900">
-          Top Products
-        </h2>
+        <h2 className="text-2xl font-bold text-slate-900">Top Products</h2>
       </div>
 
       <Table>
@@ -49,9 +50,7 @@ export async function TopProducts() {
                     <h5 className="text-slate-900 font-semibold">
                       {product.name}
                     </h5>
-                    <p className="text-sm text-slate-600">
-                      #{index + 1}
-                    </p>
+                    <p className="text-sm text-slate-600">#{index + 1}</p>
                   </div>
                 </div>
               </TableCell>
@@ -64,7 +63,7 @@ export async function TopProducts() {
 
               <TableCell className="text-center">
                 <span className="font-semibold text-slate-900">
-                  ${standardFormat(product.price)}
+                  {product.price.toLocaleString("vi-VN")}₫
                 </span>
               </TableCell>
 

@@ -39,6 +39,11 @@ const NewArrival = () => {
       try {
         setIsLoading(true);
         console.log("Fetching posts from /api/posts");
+        console.log("API Base URL:", process.env.NEXT_PUBLIC_API_BASE_URL);
+        console.log(
+          "Full URL will be:",
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}posts`
+        );
 
         const response = await api.get("posts");
         console.log("Posts API response:", response.data);
@@ -163,7 +168,41 @@ const NewArrival = () => {
         setError(null);
       } catch (error) {
         console.error("Error fetching posts:", error);
-        setError("Failed to load posts");
+
+        // Provide more specific error messages
+        const err = error as {
+          code?: string;
+          response?: { status: number };
+          message?: string;
+          name?: string;
+        };
+
+        console.log("📊 Error details:", {
+          code: err.code,
+          message: err.message,
+          name: err.name,
+          status: err.response?.status,
+        });
+
+        if (
+          err.code === "ERR_NETWORK" ||
+          err.message?.includes("Network Error")
+        ) {
+          setError(
+            "🚫 CORS Error: Backend is running but blocking browser requests. Add CORS policy for http://localhost:3000 in your backend."
+          );
+        } else if (err.response?.status === 404) {
+          setError(
+            "❌ API endpoint not found - Check if /api/posts exists in backend"
+          );
+        } else if (err.response?.status && err.response.status >= 500) {
+          setError("⚠️ Server error - Check backend logs");
+        } else {
+          setError(
+            `❌ Failed to load posts: ${err.message || "Unknown error"}`
+          );
+        }
+
         // Fallback to empty array on error
         setPosts([]);
       } finally {

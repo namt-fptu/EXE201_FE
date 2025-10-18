@@ -619,7 +619,7 @@ const CreatePost = () => {
                   htmlFor="price"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Price ($) *
+                  Price (VND) *
                 </label>
                 <input
                   type="number"

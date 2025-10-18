@@ -6,9 +6,11 @@ import { AppDispatch, useAppSelector } from "@/redux/store";
 import { useDispatch } from "react-redux";
 import Image from "next/image";
 import { usePreviewSlider } from "@/app/context/PreviewSliderContext";
-import { resetQuickView } from "@/redux/features/quickView-slice";
 import { updateproductDetails } from "@/redux/features/product-details";
 import { Product } from "@/types/product";
+import ContactSellerModal from "@/components/Common/ContactSellerModal";
+import { postsService } from "@/services/postsServiceWithAxios";
+import { usersService } from "@/services/users";
 
 // Extended Product type for posts
 interface ExtendedProduct extends Product {
@@ -16,6 +18,7 @@ interface ExtendedProduct extends Product {
   condition?: string;
   description?: string;
   createdAt?: string;
+  userId?: number;
 }
 
 const QuickViewModal = () => {
@@ -40,16 +43,31 @@ const QuickViewModal = () => {
 
   // handle contact seller
   const handleContactSeller = () => {
-    // Add contact seller functionality here
-    alert("Contact seller functionality to be implemented");
-    closeModal();
+    // Check if product data is available
+    if (!product || !product.id) {
+      console.error("Cannot contact seller: Product data not available");
+      return;
+    }
+
+    // Dispatch custom event to open contact modal
+    document.dispatchEvent(new CustomEvent("open-contact-seller"));
   };
 
   useEffect(() => {
     // closing modal while clicking outside
     function handleClickOutside(event) {
-      if (!event.target.closest(".modal-content")) {
-        closeModal();
+      // Check if click is outside ANY modal-content OR if it's specifically on QuickView background
+      const isOutsideModal = !event.target.closest(".modal-content");
+      const isQuickViewBackground = event.target.classList?.contains(
+        "quickview-background"
+      );
+
+      if (isOutsideModal || isQuickViewBackground) {
+        // Additional check: don't close if ContactSeller modal is open (z-index > 99999)
+        const contactModal = document.querySelector('[class*="z-[100000]"]');
+        if (!contactModal) {
+          closeModal();
+        }
       }
     }
 
@@ -68,7 +86,7 @@ const QuickViewModal = () => {
     <div
       className={`${
         isModalOpen ? "z-99999" : "hidden"
-      } fixed top-0 left-0 overflow-y-auto no-scrollbar w-full h-screen sm:py-20 xl:py-25 2xl:py-[230px] bg-dark/70 sm:px-8 px-4 py-5`}
+      } quickview-background fixed top-0 left-0 overflow-y-auto no-scrollbar w-full h-screen sm:py-20 xl:py-25 2xl:py-[230px] bg-dark/70 sm:px-8 px-4 py-5`}
     >
       <div className="flex items-center justify-center ">
         <div className="w-full max-w-[1100px] rounded-xl shadow-3 bg-white p-7.5 relative modal-content">
@@ -292,7 +310,12 @@ const QuickViewModal = () => {
               <div className="flex flex-wrap items-center gap-4">
                 <button
                   onClick={handleContactSeller}
-                  className="inline-flex font-medium text-white bg-blue py-3 px-7 rounded-md ease-out duration-200 hover:bg-blue-dark"
+                  disabled={!product || !product.id}
+                  className={`inline-flex font-medium text-white py-3 px-7 rounded-md ease-out duration-200 ${
+                    !product || !product.id
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue hover:bg-blue-dark"
+                  }`}
                 >
                   Contact Seller
                 </button>
@@ -324,4 +347,169 @@ const QuickViewModal = () => {
   );
 };
 
-export default QuickViewModal;
+// Separate ContactSeller component wrapper
+const QuickViewWithContactSeller = () => {
+  const { isModalOpen } = useModalContext();
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [sellerInfo, setSellerInfo] = useState<{
+    phoneNumber?: string;
+    sellerId?: number;
+    sellerName?: string;
+    avatarImage?: string;
+  }>({});
+  const [isLoadingSeller, setIsLoadingSeller] = useState(false);
+
+  // get the product data
+  const product = useAppSelector(
+    (state) => state.quickViewReducer.value
+  ) as ExtendedProduct;
+
+  // Reset contact modal when quick view closes
+  useEffect(() => {
+    if (!isModalOpen) {
+      setShowContactModal(false);
+      setSellerInfo({});
+    }
+  }, [isModalOpen]);
+
+  // Fetch seller information when contact seller is clicked
+  const fetchSellerInfo = async () => {
+    try {
+      setIsLoadingSeller(true);
+
+      // Check if product exists and has ID
+      if (!product || !product.id) {
+        console.error(
+          "Cannot fetch seller info: product or product ID is not available",
+          {
+            hasProduct: !!product,
+            productId: product?.id,
+          }
+        );
+        setSellerInfo({
+          phoneNumber: "Not available",
+          sellerId: 0,
+          sellerName: "Unknown Seller",
+        });
+        setIsLoadingSeller(false);
+        return;
+      }
+
+      // Always fetch the full post data to get userId
+      console.log("Fetching post data for ID:", product.id);
+      const postResponse = await postsService.getById(Number(product.id));
+
+      if (!postResponse.isSuccess || !postResponse.data) {
+        console.error("Failed to fetch post data:", postResponse.message);
+        setSellerInfo({
+          phoneNumber: "Not available",
+          sellerId: 0,
+          sellerName: "Unknown Seller",
+        });
+        return;
+      }
+
+      // Extract userId from post response
+      const postData = postResponse.data;
+      const userId = postData.userId || Number(postData.authorId);
+      const userName = postData.userName || postData.authorName;
+
+      console.log("Post data retrieved:", {
+        postId: product.id,
+        userId: userId,
+        userName: userName,
+      });
+
+      if (!userId) {
+        console.error(
+          "Cannot fetch seller info: userId not found in post data"
+        );
+        setSellerInfo({
+          phoneNumber: "Not available",
+          sellerId: 0,
+          sellerName: userName || "Unknown Seller",
+        });
+        return;
+      }
+
+      // Fetch user/seller information
+      console.log("Fetching user data for userId:", userId);
+      const userResponse = await usersService.getById(Number(userId));
+
+      if (userResponse.isSuccess && userResponse.data) {
+        const userData = userResponse.data;
+        console.log("Seller info retrieved:", {
+          sellerId: userData.id,
+          sellerName: userData.userName,
+          phoneNumber: userData.phoneNumber ? "Available" : "Not available",
+        });
+
+        setSellerInfo({
+          phoneNumber: userData.phoneNumber || "Not available",
+          sellerId: userData.id,
+          sellerName: userData.userName || userData.username || "Seller",
+          avatarImage: userData.avataImage,
+        });
+      } else {
+        console.error("Failed to fetch seller info:", userResponse.message);
+        setSellerInfo({
+          phoneNumber: "Not available",
+          sellerId: Number(userId),
+          sellerName: userName || "Seller",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching seller information:", error);
+      setSellerInfo({
+        phoneNumber: "Not available",
+        sellerId: 0,
+        sellerName: "Seller",
+      });
+    } finally {
+      setIsLoadingSeller(false);
+    }
+  };
+
+  // Listen for contact seller events
+  useEffect(() => {
+    const handleContactSeller = async () => {
+      // Only fetch if product data is available
+      if (!product || !product.id) {
+        console.warn("Contact Seller clicked but product data is not ready");
+        setShowContactModal(false);
+        return;
+      }
+
+      await fetchSellerInfo();
+      setShowContactModal(true);
+    };
+
+    // Add event listener for contact seller
+    document.addEventListener("open-contact-seller", handleContactSeller);
+
+    return () => {
+      document.removeEventListener("open-contact-seller", handleContactSeller);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]); // Re-run when product ID changes
+
+  return (
+    <>
+      <QuickViewModal />
+
+      {/* Contact Seller Modal - Independent from QuickView */}
+      <ContactSellerModal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        sellerInfo={sellerInfo}
+        item={{
+          id: product?.id || 0,
+          title: product?.title || "Product",
+        }}
+        isLoading={isLoadingSeller}
+      />
+    </>
+  );
+};
+
+export default QuickViewWithContactSeller;

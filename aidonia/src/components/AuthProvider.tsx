@@ -17,10 +17,25 @@ export default function AuthProvider({
   useEffect(() => {
     if (!hasInitializedRef.current) {
       hasInitializedRef.current = true;
-      
+
       // Load user from storage synchronously
       loadUserFromStorage();
-      
+
+      // Debug: Check what user data was loaded
+      const savedUser = localStorage.getItem("user");
+      if (savedUser) {
+        try {
+          const userData = JSON.parse(savedUser);
+          console.log("🔍 AuthProvider: Loaded user data:", {
+            userName: userData.userName,
+            hasAvatar: !!userData.avataImage,
+            avatarUrl: userData.avataImage,
+          });
+        } catch (e) {
+          console.error("Failed to parse user data", e);
+        }
+      }
+
       // Set up token refresh interval
       refreshIntervalRef.current = setInterval(
         () => {

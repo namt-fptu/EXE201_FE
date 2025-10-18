@@ -8,7 +8,13 @@ import useUserStore from "@/redux/userStore";
 import { toast } from "sonner";
 import { normalizeRole, redirectByRole } from "@/utils/auth-helpers";
 import { ensureValidToken } from "@/services/auth";
-import { handleApiResponse, handleApiError, showLoadingToast, showSuccessToast, MultiStepToastHandler } from "@/utils/toast-helper";
+import {
+  handleApiResponse,
+  handleApiError,
+  showLoadingToast,
+  showSuccessToast,
+  MultiStepToastHandler,
+} from "@/utils/toast-helper";
 
 const Signin = () => {
   const [email, setEmail] = useState("");
@@ -46,13 +52,13 @@ const Signin = () => {
       "Authenticating credentials...",
       "Saving authentication tokens...",
       "Loading user profile...",
-      "Redirecting to dashboard..."
+      "Redirecting to dashboard...",
     ]);
 
     try {
       // Single loading toast for the entire process
       toastHandler.startStep(0);
-      
+
       const authResponse = await api.post("auth/authentication", {
         email,
         password,
@@ -107,21 +113,41 @@ const Signin = () => {
 
         // Persist user in store
         const userData = {
-          id: authResponse.data.id.toString(),
-          userName: authResponse.data.userName || authResponse.data.username || authResponse.data.email,
-          username: authResponse.data.userName || authResponse.data.username || authResponse.data.email,
-          email: authResponse.data.email || 'unknown@example.com',
+          id: authResponse.data.id,
+          userName:
+            authResponse.data.userName ||
+            authResponse.data.username ||
+            authResponse.data.email,
+          username:
+            authResponse.data.userName ||
+            authResponse.data.username ||
+            authResponse.data.email,
+          email: authResponse.data.email || "unknown@example.com",
+          phoneNumber: authResponse.data.phoneNumber,
+          location: authResponse.data.location,
           role: normalized,
-          avatarImage:
-            authResponse.data.avataImage || authResponse.data.avatarImage,
+          reputationScore: authResponse.data.reputationScore,
+          avataImage: authResponse.data.avataImage, // Backend uses 'avataImage' (lowercase i)
+          phoneVerified: authResponse.data.phoneVerified,
+          mailVerified: authResponse.data.mailVerified,
+          token: token,
+          refreshToken: refreshToken,
+          residentId: authResponse.data.residentId,
         };
 
+        console.log("✅ [Signin] User data prepared:", {
+          id: userData.id,
+          userName: userData.userName,
+          hasAvatar: !!userData.avataImage,
+          avatarUrl: userData.avataImage,
+        });
+
         setUser(userData);
-        
+
         // Complete with single final message
         toastHandler.complete(
-          normalized === "admin" 
-            ? "Welcome back, Admin! Redirecting to dashboard..." 
+          normalized === "admin"
+            ? "Welcome back, Admin! Redirecting to dashboard..."
             : `Welcome back, ${userData.userName}! Redirecting...`
         );
 
@@ -137,7 +163,10 @@ const Signin = () => {
           } catch {}
         }, 1000);
       } else {
-        toastHandler.failStep(0, "Invalid response from server - no user data received");
+        toastHandler.failStep(
+          0,
+          "Invalid response from server - no user data received"
+        );
       }
     } catch (error) {
       console.error("Error during sign-in", error);
@@ -145,8 +174,8 @@ const Signin = () => {
 
       // Use the comprehensive error handler
       handleApiError(error, {
-        context: 'signin',
-        showDetails: true
+        context: "signin",
+        showDetails: true,
       });
     } finally {
       setIsLoading(false);
