@@ -8,6 +8,7 @@ import useUserStore from "@/redux/userStore";
 import { toast } from "sonner";
 import api from "@/services/axios";
 import { AxiosError } from "axios";
+
 import packageService from "@/services/packageService";
 import {
   handleApiResponse,
@@ -24,6 +25,8 @@ interface Post {
   id: string;
   title: string;
   description?: string;
+  price?: number;
+  condition?: string;
   categoryName?: string;
   status: string;
   createdAt: string;
@@ -83,6 +86,36 @@ const MyAccount = () => {
 
   const { user, isAuthenticated, logout } = useUserStore();
   const router = useRouter();
+  // ---- Edit Post states (đặt ở TOP của component) ----
+  type PostEditForm = {
+    title: string;
+    description: string;
+    price: number | string;
+    condition: string;
+    categoryId: string;
+    postImages: string[];
+  };
+
+  const [postModalOpen, setPostModalOpen] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [postForm, setPostForm] = useState<PostEditForm>({
+    title: "",
+    description: "",
+    price: "",
+    condition: "",
+    categoryId: "",
+    postImages: [""],
+  });
+  const [postSaving, setPostSaving] = useState(false);
+
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  const [noticeText, setNoticeText] = useState("*Please contact Email to edit");
+  const CONDITION_OPTIONS = ["New", "Like New", "Good", "Fair", "Poor"] as const;
+
+  type Category = { id: number; categoryName: string };
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [catLoading, setCatLoading] = useState(false);
 
   // Logout handler
   const handleLogout = () => {
@@ -105,7 +138,7 @@ const MyAccount = () => {
     const loadingToast = showLoadingToast("Loading your profile...");
 
     try {
-      const response = await api.get(`users/${user.id}`);
+      const response = await api.get(`/users/${user.id}`);
       console.log("User profile response:", response.data);
 
       // Dismiss loading toast
@@ -151,7 +184,7 @@ const MyAccount = () => {
     setPackagesLoading(true);
     try {
       // First get the user's active packages
-      const response = await api.get(`user_packages/package/active/${user.id}`);
+      const response = await api.get(`/user_packages/package/active/${user.id}`);
       console.log("User packages response:", response.data);
       console.log(
         "User packages response structure:",
@@ -226,7 +259,7 @@ const MyAccount = () => {
                 }
 
                 // Get detailed package info from packages/{id} endpoint
-                const detailResponse = await api.get(`packages/${packageId}`);
+                const detailResponse = await api.get(`/packages/${packageId}`);
                 const packageDetails =
                   detailResponse.data?.data || detailResponse.data;
 
@@ -256,13 +289,13 @@ const MyAccount = () => {
                   // Calculate used posts from remaining posts
                   usedPosts:
                     packageDetails?.postLimit ||
-                    userPkg.postLimit ||
-                    userPkg.package?.postLimit ||
-                    0
+                      userPkg.postLimit ||
+                      userPkg.package?.postLimit ||
+                      0
                       ? (packageDetails?.postLimit ||
-                          userPkg.postLimit ||
-                          userPkg.package?.postLimit ||
-                          0) - (userPkg.remainingPosts || 0)
+                        userPkg.postLimit ||
+                        userPkg.package?.postLimit ||
+                        0) - (userPkg.remainingPosts || 0)
                       : 0,
                 };
               } catch (detailError) {
@@ -339,7 +372,7 @@ const MyAccount = () => {
 
     setPostsLoading(true);
     try {
-      const response = await api.get(`posts/user/${user.id}`);
+      const response = await api.get(`/posts/user/${user.id}`);
       console.log("User posts response:", response.data);
 
       // Handle different possible response structures
@@ -383,7 +416,7 @@ const MyAccount = () => {
 
     setAddressesLoading(true);
     try {
-      const response = await api.get(`addresses/users/${user.id}`);
+      const response = await api.get(`/addresses/users/${user.id}`);
       console.log("User addresses response:", response.data);
 
       // Handle different possible response structures
@@ -427,7 +460,7 @@ const MyAccount = () => {
 
     setHistoryLoading(true);
     try {
-      const response = await api.get(`payments/users/${user.id}`);
+      const response = await api.get(`/payments/users/${user.id}`);
       console.log("Payment history response:", response.data);
 
       // Handle different possible response structures
@@ -553,7 +586,7 @@ const MyAccount = () => {
 
     try {
       setEditLoading(true);
-      const response = await api.put(`address/${editingAddress.id}`, editForm);
+      const response = await api.put(`/address/${editingAddress.id}`, editForm);
 
       if (response.data.success) {
         showInfoToast("Address updated successfully!");
@@ -581,6 +614,107 @@ const MyAccount = () => {
       setEditLoading(false);
     }
   };
+
+  // load chi tiết 1 post để prefill form
+  const fetchPostDetail = async (id: string) => {
+    try {
+      const res = await api.get(`/posts/${id}`);
+      const data = res.data?.data || res.data || {};
+      setPostForm({
+        title: data.title ?? "",
+        description: data.description ?? "",
+        price: data.price ?? "",
+        condition: data.condition ?? "",
+        categoryId: data.categoryId != null ? String(data.categoryId) : "",
+        postImages: Array.isArray(data.postImages) && data.postImages.length ? data.postImages : [""],
+      });
+    } catch {
+      setPostForm({
+        title: "",
+        description: "",
+        price: "",
+        condition: "",
+        categoryId: "",
+        postImages: [""],
+      });
+    }
+  };
+
+  const openEditPost = async (post: Post) => {
+    const s = (post.status || "").toLowerCase();
+    if (s === "approved" || s === "reject" || s === "rejected") {
+      setNoticeText("*Please contact Email to edit");
+      setNoticeOpen(true);
+      return;
+    }
+    setEditingPostId(post.id);
+    // lấy song song: chi tiết post + categories
+    await Promise.all([fetchPostDetail(post.id), fetchCategories()]);
+    setPostModalOpen(true);
+  };
+
+  const updatePost = async () => {
+    if (!editingPostId) return;
+    try {
+      setPostSaving(true);
+      const payload = {
+        title: postForm.title,
+        description: postForm.description,
+        price: Number(postForm.price) || 0,
+        condition: postForm.condition,
+        categoryId: Number(postForm.categoryId) || 0,
+        postImages: postForm.postImages.filter(Boolean),
+      };
+
+      const id = Number(editingPostId);
+      console.log("[UpdatePost] baseURL =", api.defaults.baseURL, "id =", id);
+
+      await api.put(`/posts/${id}`, payload);
+
+      setPostModalOpen(false);
+      setEditingPostId(null);
+      // gọi lại load danh sách bài post của user
+      await loadUserPosts();
+    } finally {
+      setPostSaving(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      setCatLoading(true);
+      const res = await api.get("/categories");
+      const items: Category[] = res?.data?.data ?? [];
+      setCategories(items);
+      return items; // ⬅️ trả về để dùng tiếp
+    } catch {
+      showWarningToast("Could not load categories");
+      setCategories([]);
+      return [] as Category[];
+    } finally {
+      setCatLoading(false);
+    }
+  };
+
+
+  const formatVND = (v: number | string | undefined) =>
+    new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0,
+    }).format(Number(v) || 0);
+
+  const statusBadge = (s?: string) => {
+    const k = (s || "").toLowerCase();
+    if (k === "approved") return "bg-green-50 text-green-700 ring-1 ring-green-200";
+    if (k === "pending") return "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
+    if (k === "reject" || k === "rejected") return "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
+    return "bg-slate-50 text-slate-600 ring-1 ring-slate-200";
+  };
+
+  const formatDate = (d?: string) =>
+    d ? new Date(d).toLocaleDateString("vi-VN") : "-";
+
 
   return (
     <>
@@ -629,11 +763,10 @@ const MyAccount = () => {
                   <div className="flex flex-wrap xl:flex-nowrap xl:flex-col gap-4">
                     <button
                       onClick={() => setActiveTab("posts")}
-                      className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${
-                        activeTab === "posts"
-                          ? "text-white bg-blue"
-                          : "text-dark-2 bg-gray-1"
-                      }`}
+                      className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${activeTab === "posts"
+                        ? "text-white bg-blue"
+                        : "text-dark-2 bg-gray-1"
+                        }`}
                     >
                       <svg
                         className="fill-current"
@@ -667,11 +800,10 @@ const MyAccount = () => {
 
                     <button
                       onClick={() => setActiveTab("packages")}
-                      className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${
-                        activeTab === "packages"
-                          ? "text-white bg-blue"
-                          : "text-dark-2 bg-gray-1"
-                      }`}
+                      className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${activeTab === "packages"
+                        ? "text-white bg-blue"
+                        : "text-dark-2 bg-gray-1"
+                        }`}
                     >
                       <svg
                         className="fill-current"
@@ -701,11 +833,10 @@ const MyAccount = () => {
 
                     <button
                       onClick={() => setActiveTab("addresses")}
-                      className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${
-                        activeTab === "addresses"
-                          ? "text-white bg-blue"
-                          : "text-dark-2 bg-gray-1"
-                      }`}
+                      className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${activeTab === "addresses"
+                        ? "text-white bg-blue"
+                        : "text-dark-2 bg-gray-1"
+                        }`}
                     >
                       <svg
                         className="fill-current"
@@ -731,11 +862,10 @@ const MyAccount = () => {
 
                     <button
                       onClick={() => setActiveTab("account-details")}
-                      className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${
-                        activeTab === "account-details"
-                          ? "text-white bg-blue"
-                          : "text-dark-2 bg-gray-1"
-                      }`}
+                      className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${activeTab === "account-details"
+                        ? "text-white bg-blue"
+                        : "text-dark-2 bg-gray-1"
+                        }`}
                     >
                       <svg
                         className="fill-current"
@@ -763,11 +893,10 @@ const MyAccount = () => {
 
                     <button
                       onClick={() => setActiveTab("history")}
-                      className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${
-                        activeTab === "history"
-                          ? "text-white bg-blue"
-                          : "text-dark-2 bg-gray-1"
-                      }`}
+                      className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${activeTab === "history"
+                        ? "text-white bg-blue"
+                        : "text-dark-2 bg-gray-1"
+                        }`}
                     >
                       <svg
                         className="fill-current"
@@ -824,9 +953,8 @@ const MyAccount = () => {
           <!--== user dashboard content start ==--> */}
             {/* <!-- posts tab content start --> */}
             <div
-              className={`xl:max-w-[770px] w-full bg-white rounded-xl shadow-1 ${
-                activeTab === "posts" ? "block" : "hidden"
-              }`}
+              className={`xl:max-w-[770px] w-full bg-white rounded-xl shadow-1 ${activeTab === "posts" ? "block" : "hidden"
+                }`}
             >
               <div className="p-4 sm:p-7.5 xl:p-9">
                 <h3 className="text-xl font-semibold mb-6">My Posts</h3>
@@ -840,75 +968,107 @@ const MyAccount = () => {
                     {userPosts.map((post: Post) => (
                       <div
                         key={post.id}
-                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        className="rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition p-5 md:p-6"
                       >
-                        <div className="flex justify-between items-start mb-3">
-                          <h4 className="font-semibold text-lg text-dark">
-                            {post.title}
-                          </h4>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs ${
-                              post.status === "active"
-                                ? "bg-green-100 text-green-800"
-                                : post.status === "pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {post.status}
-                          </span>
-                        </div>
+                        {/* Top row: Title + Status + Edit */}
+                        <div className="flex items-start justify-between gap-4">
+                          {/* Left: title + description */}
+                          <div className="min-w-0">
+                            <h4 className="text-slate-900 font-semibold text-base md:text-lg truncate">
+                              {post.title}
+                            </h4>
 
-                        {post.description && (
-                          <p className="text-gray-600 mb-3 line-clamp-2">
-                            {post.description}
-                          </p>
-                        )}
-
-                        <div className="flex items-center justify-between text-sm text-gray-500">
-                          <span>
-                            Category: {post.categoryName || "Uncategorized"}
-                          </span>
-                          <span>
-                            Created:{" "}
-                            {new Date(post.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-
-                        {post.images && post.images.length > 0 && (
-                          <div className="flex gap-2 mt-3">
-                            {post.images
-                              .slice(0, 3)
-                              .map(
-                                (
-                                  image: { url: string } | string,
-                                  index: number
-                                ) => (
-                                  <div
-                                    key={index}
-                                    className="w-16 h-16 relative"
-                                  >
-                                    <Image
-                                      src={
-                                        typeof image === "string"
-                                          ? image
-                                          : image.url
-                                      }
-                                      alt={`Post image ${index + 1}`}
-                                      fill
-                                      className="rounded object-cover"
-                                    />
-                                  </div>
-                                )
-                              )}
-                            {post.images.length > 3 && (
-                              <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-600">
-                                +{post.images.length - 3}
-                              </div>
+                            {post.description && (
+                              <p className="mt-1 text-slate-600 text-sm line-clamp-2">
+                                {post.description}
+                              </p>
                             )}
                           </div>
-                        )}
+
+                          {/* Right: status + edit */}
+                          <div className="flex flex-col items-end shrink-0">
+                            <span
+                              className={
+                                "px-2.5 py-1 rounded-full text-xs font-medium " +
+                                statusBadge(post.status)
+                              }
+                            >
+                              {post.status}
+                            </span>
+
+                            <button
+                              onClick={() => openEditPost(post)}
+                              className="mt-2 text-sm text-blue-500 hover:text-blue-600 hover:underline"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="mt-4 h-px bg-slate-100" />
+
+                        {/* Meta grid: Price | Condition | Category | Created */}
+                        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500">Price:</span>
+                            <span className="font-medium text-slate-900">
+                              {formatVND(post.price)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500">Condition:</span>
+                            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-medium capitalize">
+                              {post.condition || "-"}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500">Category:</span>
+                            <span className="text-slate-800">{post.categoryName || "Uncategorized"}</span>
+                          </div>
+
+                          <div className="flex items-center md:justify-end gap-1.5">
+                            <span className="text-slate-500">Created:</span>
+                            <span className="text-slate-800">{formatDate(post.createdAt)}</span>
+                          </div>
+                          {post.images && post.images.length > 0 && (
+                            <div className="flex gap-2 mt-3">
+                              {post.images
+                                .slice(0, 3)
+                                .map(
+                                  (
+                                    image: { url: string } | string,
+                                    index: number
+                                  ) => (
+                                    <div
+                                      key={index}
+                                      className="w-16 h-16 relative"
+                                    >
+                                      <Image
+                                        src={
+                                          typeof image === "string"
+                                            ? image
+                                            : image.url
+                                        }
+                                        alt={`Post image ${index + 1}`}
+                                        fill
+                                        className="rounded object-cover"
+                                      />
+                                    </div>
+                                  )
+                                )}
+                              {post.images.length > 3 && (
+                                <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-600">
+                                  +{post.images.length - 3}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
+
                     ))}
                   </div>
                 ) : (
@@ -946,9 +1106,8 @@ const MyAccount = () => {
 
           <!-- packages tab content start --> */}
             <div
-              className={`xl:max-w-[770px] w-full bg-white rounded-xl shadow-1 ${
-                activeTab === "packages" ? "block" : "hidden"
-              }`}
+              className={`xl:max-w-[770px] w-full bg-white rounded-xl shadow-1 ${activeTab === "packages" ? "block" : "hidden"
+                }`}
             >
               <div className="p-4 sm:p-8.5">
                 <div className="flex items-center justify-between mb-7">
@@ -994,11 +1153,10 @@ const MyAccount = () => {
                             </div>
                             <div className="text-right">
                               <span
-                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                  isActive
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-red-100 text-red-800"
-                                }`}
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${isActive
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                                  }`}
                               >
                                 {pkg.status || "Unknown"}
                               </span>
@@ -1087,9 +1245,8 @@ const MyAccount = () => {
 
           <!-- history tab content start --> */}
             <div
-              className={`xl:max-w-[770px] w-full bg-white rounded-xl shadow-1 ${
-                activeTab === "history" ? "block" : "hidden"
-              }`}
+              className={`xl:max-w-[770px] w-full bg-white rounded-xl shadow-1 ${activeTab === "history" ? "block" : "hidden"
+                }`}
             >
               <div className="p-4 sm:p-8.5">
                 <div className="flex items-center justify-between mb-7">
@@ -1136,22 +1293,22 @@ const MyAccount = () => {
                                   <p className="font-medium text-dark text-sm">
                                     {payment.paidAt
                                       ? new Date(
-                                          payment.paidAt
-                                        ).toLocaleDateString("en-US", {
-                                          year: "numeric",
-                                          month: "short",
-                                          day: "numeric",
-                                        })
+                                        payment.paidAt
+                                      ).toLocaleDateString("en-US", {
+                                        year: "numeric",
+                                        month: "short",
+                                        day: "numeric",
+                                      })
                                       : "N/A"}
                                   </p>
                                   <p className="text-xs text-gray-500">
                                     {payment.paidAt
                                       ? new Date(
-                                          payment.paidAt
-                                        ).toLocaleTimeString("en-US", {
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                        })
+                                        payment.paidAt
+                                      ).toLocaleTimeString("en-US", {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })
                                       : ""}
                                   </p>
                                 </div>
@@ -1221,9 +1378,8 @@ const MyAccount = () => {
 
           <!-- addresses tab content start --> */}
             <div
-              className={`xl:max-w-[770px] w-full bg-white rounded-xl shadow-1 ${
-                activeTab === "addresses" ? "block" : "hidden"
-              }`}
+              className={`xl:max-w-[770px] w-full bg-white rounded-xl shadow-1 ${activeTab === "addresses" ? "block" : "hidden"
+                }`}
             >
               <div className="p-4 sm:p-7.5 xl:p-9">
                 <div className="flex items-center justify-between mb-6">
@@ -1389,9 +1545,8 @@ const MyAccount = () => {
 
           <!-- details tab content start --> */}
             <div
-              className={`xl:max-w-[770px] w-full ${
-                activeTab === "account-details" ? "block" : "hidden"
-              }`}
+              className={`xl:max-w-[770px] w-full ${activeTab === "account-details" ? "block" : "hidden"
+                }`}
             >
               <form>
                 <div className="bg-white shadow-1 rounded-xl p-4 sm:p-8.5">
@@ -1563,6 +1718,160 @@ const MyAccount = () => {
           </div>
         </div>
       </section>
+      {/* ====== Edit Post Modal ====== */}
+      {postModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-2xl mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Edit Post</h3>
+              <button onClick={() => setPostModalOpen(false)} className="text-gray-500 hover:text-gray-700">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <label className="block text-sm mb-1">Title</label>
+                <input
+                  value={postForm.title}
+                  onChange={e => setPostForm({ ...postForm, title: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+
+                <label className="block text-sm mb-1 mt-3">Description</label>
+                <textarea
+                  value={postForm.description}
+                  onChange={e => setPostForm({ ...postForm, description: e.target.value })}
+                  className="w-full h-[140px] px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+
+                <label className="block text-sm mb-1 mt-3">Condition</label>
+                <select
+                  value={postForm.condition || ""}
+                  onChange={(e) => setPostForm({ ...postForm, condition: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md bg-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="" disabled>Select condition…</option>
+                  {CONDITION_OPTIONS.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm mb-1">Price</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={postForm.price}
+                    onChange={(e) => setPostForm({ ...postForm, price: e.target.value })}
+                    className="w-full px-3 py-2 pr-14 border rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter amount"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">
+                    VND
+                  </span>
+                </div>
+
+                <label className="block text-sm mb-1">Category</label>
+                <select
+                  value={postForm.categoryId}
+                  onChange={(e) => setPostForm({ ...postForm, categoryId: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md bg-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="" disabled>
+                    {catLoading ? "Loading..." : "Select category…"}
+                  </option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={String(c.id)}>         {/* ⬅️ ép về string */}
+                      {c.categoryName}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="mt-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm">Post Images (URLs)</label>
+                    <button
+                      type="button"
+                      onClick={() => setPostForm({ ...postForm, postImages: [...postForm.postImages, ""] })}
+                      className="text-sm text-blue-500 hover:text-blue-600 hover:underline"
+                    >
+                      + Add
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {postForm.postImages.map((url, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input
+                          value={url}
+                          onChange={e => {
+                            const next = [...postForm.postImages];
+                            next[idx] = e.target.value;
+                            setPostForm({ ...postForm, postImages: next });
+                          }}
+                          className="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                          placeholder="https://..."
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = postForm.postImages.filter((_, i) => i !== idx);
+                            setPostForm({ ...postForm, postImages: next.length ? next : [""] });
+                          }}
+                          className="px-2 text-sm text-red-600 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setPostModalOpen(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+                disabled={postSaving}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updatePost}
+                className="flex-1 px-4 py-2 bg-blue text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+                disabled={postSaving}
+              >
+                {postSaving ? "Updating..." : "Update Post"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ====== Notice Modal for Approved/Reject ====== */}
+      {noticeOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-3">Notice</h3>
+            <p className="text-sm text-gray-700 whitespace-pre-line">{noticeText}</p>
+            <div className="mt-5 flex justify-end">
+              <button
+                onClick={() => setNoticeOpen(false)}
+                className="px-4 py-2 bg-blue text-white rounded-md hover:bg-blue-600"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
 
       {/* Edit Address Modal */}
       {addressModal && editingAddress && (
@@ -1691,6 +2000,7 @@ const MyAccount = () => {
       )}
     </>
   );
+
 };
 
 export default MyAccount;
