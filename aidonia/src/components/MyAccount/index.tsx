@@ -617,28 +617,10 @@ const MyAccount = () => {
 
   // load chi tiết 1 post để prefill form
   const fetchPostDetail = async (id: string) => {
-    try {
-      const res = await api.get(`/posts/${id}`);
-      const data = res.data?.data || res.data || {};
-      setPostForm({
-        title: data.title ?? "",
-        description: data.description ?? "",
-        price: data.price ?? "",
-        condition: data.condition ?? "",
-        categoryId: data.categoryId != null ? String(data.categoryId) : "",
-        postImages: Array.isArray(data.postImages) && data.postImages.length ? data.postImages : [""],
-      });
-    } catch {
-      setPostForm({
-        title: "",
-        description: "",
-        price: "",
-        condition: "",
-        categoryId: "",
-        postImages: [""],
-      });
-    }
+    const res = await api.get(`/posts/${id}`);
+    return res.data?.data || res.data || {};
   };
+
 
   const openEditPost = async (post: Post) => {
     const s = (post.status || "").toLowerCase();
@@ -648,37 +630,84 @@ const MyAccount = () => {
       return;
     }
     setEditingPostId(post.id);
-    // lấy song song: chi tiết post + categories
-    await Promise.all([fetchPostDetail(post.id), fetchCategories()]);
+
+    // Lấy song song: chi tiết + categories (đều trả về dữ liệu)
+    const [detail, cats] = await Promise.all([
+      fetchPostDetail(post.id),
+      fetchCategories(),
+    ]);
+
+    // Tìm categoryId hiển thị
+    let catId: string = "";
+    if (detail?.categoryId != null) {
+      catId = String(detail.categoryId);
+    } else {
+      const catName = (detail?.categoryName || post.categoryName || "").toLowerCase();
+      if (catName) {
+        const hit = (cats || []).find(
+          (c) => (c.categoryName || "").toLowerCase() === catName
+        );
+        if (hit) catId = String(hit.id);
+      }
+    }
+
+    setPostForm({
+      title: detail?.title ?? post.title ?? "",
+      description: detail?.description ?? post.description ?? "",
+      price: detail?.price ?? post.price ?? "",
+      condition: detail?.condition ?? post.condition ?? "",
+      categoryId: catId, // ⬅️ đã có id dạng string, select sẽ chọn đúng
+      postImages:
+        Array.isArray(detail?.postImages) && detail.postImages.length
+          ? detail.postImages
+          : [""],
+    });
+
     setPostModalOpen(true);
   };
 
   const updatePost = async () => {
     if (!editingPostId) return;
+
     try {
       setPostSaving(true);
+
       const payload = {
-        title: postForm.title,
-        description: postForm.description,
+        title: postForm.title?.trim() ?? "",
+        description: postForm.description?.trim() ?? "",
         price: Number(postForm.price) || 0,
         condition: postForm.condition,
         categoryId: Number(postForm.categoryId) || 0,
         postImages: postForm.postImages.filter(Boolean),
       };
 
-      const id = Number(editingPostId);
-      console.log("[UpdatePost] baseURL =", api.defaults.baseURL, "id =", id);
+      const res = await api.put(`/posts/${editingPostId}`, payload);
 
-      await api.put(`/posts/${id}`, payload);
+      // ✅ Nếu PUT thành công (status 200 hoặc 204)
+      if (res?.status === 200 || res?.status === 204) {
+        showSuccessToast("Update thành công 🎉", {
+          description: "Bài viết của bạn đã được cập nhật.",
+        });
+      } else {
+        showWarningToast("Đã gửi yêu cầu cập nhật.", {
+          description: "Hệ thống sẽ xử lý thay đổi của bạn.",
+        });
+      }
 
+      // ✅ Đóng modal
       setPostModalOpen(false);
       setEditingPostId(null);
-      // gọi lại load danh sách bài post của user
+
+      // ✅ Reload lại danh sách bài viết sau khi cập nhật
       await loadUserPosts();
+    } catch (err) {
+      console.error("Update failed:", err);
+      handleApiError(err, { customMessage: "Cập nhật thất bại, vui lòng thử lại." });
     } finally {
       setPostSaving(false);
     }
   };
+
 
   const fetchCategories = async () => {
     try {
