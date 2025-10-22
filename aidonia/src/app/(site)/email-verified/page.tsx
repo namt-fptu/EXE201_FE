@@ -2,8 +2,9 @@ import { EmailVerifiedSuccess } from "@/components/StatusPages";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Email Verified Successfully",
-  description: "Your email address has been successfully verified. Welcome to our community!",
+  title: "Email Verified",
+  description:
+    "Your email address has been successfully verified. Welcome to Aidonia!",
 };
 
 // ✅ Created email verification success page
