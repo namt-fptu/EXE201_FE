@@ -30,8 +30,11 @@ try {
 }
 
 export const metadata: Metadata = {
-  title: "EXE201_FE",
-  description: "EXE201 Frontend App",
+  title: {
+    default: "Aidonia",
+    template: "Aidonia | %s",
+  },
+  description: "Aidonia - Your trusted marketplace",
   icons: {
     icon: [
       { url: logoUrl, type: "image/svg+xml" },
