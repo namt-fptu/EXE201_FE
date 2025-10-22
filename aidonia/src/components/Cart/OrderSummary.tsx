@@ -23,15 +23,15 @@ const OrderSummary = () => {
     setIsProcessing(true);
     try {
       // Simulate checkout process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       toast.success("Redirecting to checkout...", {
         duration: 3000,
-        description: `Processing order of $${totalPrice}`,
+        description: `Processing order of ${totalPrice.toLocaleString("vi-VN")}₫`,
       });
 
       // Navigate to checkout page
-      router.push('/checkout');
+      router.push("/checkout");
     } catch (error) {
       toast.error("Checkout failed", {
         duration: 3000,
@@ -63,13 +63,19 @@ const OrderSummary = () => {
 
           {/* <!-- product item --> */}
           {cartItems.map((item, key) => (
-            <div key={key} className="flex items-center justify-between py-5 border-b border-gray-3">
+            <div
+              key={key}
+              className="flex items-center justify-between py-5 border-b border-gray-3"
+            >
               <div>
                 <p className="text-dark">{item.title}</p>
               </div>
               <div>
                 <p className="text-dark text-right">
-                  ${item.discountedPrice * item.quantity}
+                  {(item.discountedPrice * item.quantity).toLocaleString(
+                    "vi-VN"
+                  )}
+                  ₫
                 </p>
               </div>
             </div>
@@ -82,7 +88,7 @@ const OrderSummary = () => {
             </div>
             <div>
               <p className="font-medium text-lg text-dark text-right">
-                ${totalPrice}
+                {totalPrice.toLocaleString("vi-VN")}₫
               </p>
             </div>
           </div>
@@ -100,8 +106,18 @@ const OrderSummary = () => {
               </>
             ) : (
               <>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                  />
                 </svg>
                 Process to Checkout
               </>

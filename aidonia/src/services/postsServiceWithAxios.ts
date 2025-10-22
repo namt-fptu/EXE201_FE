@@ -1,4 +1,4 @@
-import api from './axios';
+import api from "./axios";
 
 export interface PostImage {
   id: string;
@@ -12,9 +12,9 @@ export interface Post {
   description?: string;
   price: number;
   priceFormatted?: string;
-  condition?: 'NEW' | 'LIKE_NEW' | 'GOOD' | 'FAIR' | 'POOR' | string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | string;
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | string;
+  condition?: "NEW" | "LIKE_NEW" | "GOOD" | "FAIR" | "POOR" | string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | string;
+  priority: "LOW" | "MEDIUM" | "HIGH" | string;
   categoryId?: string;
   categoryName?: string;
   authorId?: string;
@@ -50,6 +50,18 @@ export interface PostsResponse {
   exception: string | null;
 }
 
+export interface PagedPostsResponse {
+  isSuccess: boolean;
+  data: {
+    items: Post[];
+    pageNumber: number;
+    pageSize: number;
+    totalPages: number;
+  };
+  message: string;
+  exception: string | null;
+}
+
 export interface PostResponse {
   isSuccess: boolean;
   data: Post;
@@ -58,7 +70,37 @@ export interface PostResponse {
 }
 
 export const postsService = {
-  // Get all posts
+  // Get all posts with pagination and search (using POST endpoint)
+  getPaged: async (
+    page: number = 1,
+    limit: number = 20,
+    status?: string,
+    searchTerm?: string,
+    categoryName?: string
+  ): Promise<PagedPostsResponse> => {
+    try {
+      const requestBody = {
+        pageNumber: page,
+        pageSize: limit,
+        searchTerm: searchTerm || "",
+        status: status || "",
+        categoryName: categoryName || "",
+      };
+
+      const response = await api.post<PagedPostsResponse>(
+        "/posts/paged",
+        requestBody
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error("Error fetching paged posts:", error);
+      throw new Error(
+        error.response?.data?.message || "Failed to fetch posts."
+      );
+    }
+  },
+
+  // Get all posts (legacy method for backward compatibility)
   getAll: async (
     page: number = 1,
     limit: number = 20,
@@ -69,13 +111,13 @@ export const postsService = {
       page: page.toString(),
       limit: limit.toString(),
     });
-    
-    if (status && status !== 'ALL') {
-      params.append('status', status);
+
+    if (status && status !== "ALL") {
+      params.append("status", status);
     }
-    
+
     if (search && search.trim()) {
-      params.append('search', search.trim());
+      params.append("search", search.trim());
     }
 
     const response = await api.get<PostsResponse>(`/posts?${params}`);
@@ -89,7 +131,11 @@ export const postsService = {
             if (!imgs) return [] as PostImage[];
             return imgs.map((img: any, idx: number) => {
               if (!img) return { id: String(idx), url: "" } as PostImage;
-              if (typeof img === 'string') return { id: img.split('/').pop() ?? String(idx), url: img } as PostImage;
+              if (typeof img === "string")
+                return {
+                  id: img.split("/").pop() ?? String(idx),
+                  url: img,
+                } as PostImage;
               const url = img.url ?? img.downloadURL ?? img.path ?? img;
               const id = String(img.id ?? img._id ?? img.publicId ?? idx);
               return { id, url } as PostImage;
@@ -122,34 +168,40 @@ export const postsService = {
         pageSize,
       };
       if (searchTerm && searchTerm.trim()) body.searchTerm = searchTerm.trim();
-      if (status && status !== 'ALL') body.status = status;
+      if (status && status !== "ALL") body.status = status;
 
-      const response = await api.post<PagedResponse<any>>('/posts/paged', body);
+      const response = await api.post<PagedResponse<any>>("/posts/paged", body);
 
       // Normalize items to Post interface
       const items = (response.data?.data?.items || []).map((it: any) => {
         // Map numeric priority to string
         let priority: any = it.priority;
-        if (typeof it.priority === 'number') {
-          const map = ['LOW', 'MEDIUM', 'HIGH'];
+        if (typeof it.priority === "number") {
+          const map = ["LOW", "MEDIUM", "HIGH"];
           priority = map[it.priority] ?? String(it.priority);
         }
 
         // Normalize status to uppercase tokens
-        let statusNorm = it.status ?? '';
-        if (typeof statusNorm === 'string') statusNorm = statusNorm.toUpperCase();
+        let statusNorm = it.status ?? "";
+        if (typeof statusNorm === "string")
+          statusNorm = statusNorm.toUpperCase();
 
         // Price formatting
-        const priceNum = typeof it.price === 'number' ? it.price : Number(it.price || 0);
-        const priceFormatted = new Intl.NumberFormat('vi-VN').format(priceNum) + ' VND';
+        const priceNum =
+          typeof it.price === "number" ? it.price : Number(it.price || 0);
+        const priceFormatted =
+          new Intl.NumberFormat("vi-VN").format(priceNum) + " VND";
 
         // Normalize postImages to always be array of objects { id, url }
         const normalizeImages = (imgs: any[] | undefined) => {
           if (!imgs) return [] as PostImage[];
           return imgs.map((it: any, idx: number) => {
             if (!it) return { id: String(idx), url: "" } as PostImage;
-            if (typeof it === 'string') {
-              return { id: it.split('/').pop() ?? String(idx), url: it } as PostImage;
+            if (typeof it === "string") {
+              return {
+                id: it.split("/").pop() ?? String(idx),
+                url: it,
+              } as PostImage;
             }
             // If it's already an object, try to pick id and url fields
             const url = it.url ?? it.downloadURL ?? it.path ?? it;
@@ -159,8 +211,8 @@ export const postsService = {
         };
 
         return {
-          id: String(it.id ?? it._id ?? ''),
-          title: it.title ?? it.name ?? '',
+          id: String(it.id ?? it._id ?? ""),
+          title: it.title ?? it.name ?? "",
           description: it.description,
           price: priceNum,
           priceFormatted,
@@ -193,11 +245,16 @@ export const postsService = {
 
       return paged;
     } catch (error: any) {
-      console.error('Error fetching paged posts:', error);
+      console.error("Error fetching paged posts:", error);
       return {
         isSuccess: false,
-        data: { items: [], pageNumber: pageNumber, pageSize: pageSize, totalPages: 0 },
-        message: 'Failed to fetch paged posts',
+        data: {
+          items: [],
+          pageNumber: pageNumber,
+          pageSize: pageSize,
+          totalPages: 0,
+        },
+        message: "Failed to fetch paged posts",
         exception: error?.toString?.() ?? error,
       };
     }
@@ -211,7 +268,9 @@ export const postsService = {
       return response.data;
     } catch (error: any) {
       console.error(`Error approving post ${postId}:`, error);
-      throw new Error(error.response?.data?.message || 'Failed to approve post.');
+      throw new Error(
+        error.response?.data?.message || "Failed to approve post."
+      );
     }
   },
 
@@ -222,7 +281,20 @@ export const postsService = {
       return response.data;
     } catch (error: any) {
       console.error(`Error rejecting post ${postId}:`, error);
-      throw new Error(error.response?.data?.message || 'Failed to reject post.');
+      throw new Error(
+        error.response?.data?.message || "Failed to reject post."
+      );
+    }
+  },
+
+  // Get post by ID
+  getById: async (postId: number): Promise<PostResponse> => {
+    try {
+      const response = await api.get<PostResponse>(`/posts/${postId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error fetching post ${postId}:`, error);
+      throw new Error(error.response?.data?.message || "Failed to fetch post.");
     }
   },
 };

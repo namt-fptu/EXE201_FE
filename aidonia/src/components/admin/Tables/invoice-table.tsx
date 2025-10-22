@@ -31,11 +31,9 @@ export async function InvoiceTable() {
           {data.map((item, index) => (
             <TableRow key={index} className="border-[#eee]">
               <TableCell className="min-w-[155px] xl:pl-7.5">
-                <h5 className="text-slate-900 font-semibold">
-                  {item.name}
-                </h5>
+                <h5 className="text-slate-900 font-semibold">{item.name}</h5>
                 <p className="mt-[3px] text-body-sm font-medium text-slate-600">
-                  ${item.price}
+                  {item.price.toLocaleString("vi-VN")}₫
                 </p>
               </TableCell>
 
@@ -56,7 +54,7 @@ export async function InvoiceTable() {
                         item.status === "Unpaid",
                       "bg-[#FFA70B]/[0.08] text-[#FFA70B]":
                         item.status === "Pending",
-                    },
+                    }
                   )}
                 >
                   {item.status}

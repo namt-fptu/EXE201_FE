@@ -1,18 +1,22 @@
-import React from "react";
+import React, { useState } from "react";
 import { AppDispatch } from "@/redux/store";
 import { useDispatch } from "react-redux";
 
 import { removeItemFromWishlist } from "@/redux/features/wishlist-slice";
 import { removeFromFavorites } from "@/services/favorites";
+import { postsService } from "@/services/postsServiceWithAxios";
+import { usersService } from "@/services/users";
 import { formatVNDNumber } from "@/utils/currency";
 import { getImageUrl } from "@/utils/image-helper";
 import { toast } from "react-hot-toast";
+import ContactSellerModal from "@/components/Common/ContactSellerModal";
+import useUserStore from "@/redux/userStore";
 
 import Image from "next/image";
 
 interface WishlistItem {
-  id: number; // This should be the favorites table ID for deletion
-  postId?: number; // The actual post ID
+  id: number; // This is Post.Id from GET /api/favorites/user/{userId}
+  postId?: number; // Backup Post ID field
   title: string;
   description?: string;
   price?: number;
@@ -21,8 +25,21 @@ interface WishlistItem {
   imageUrl?: string;
   category?: string;
   categoryName?: string;
-  favoriteId?: number; // Backup field name
+  favoriteId?: number; // Backup/alias field name
   userId?: number;
+  // Image data from API
+  postImages?: Array<string | { url: string }>; // Support for API image format
+  // Seller information
+  seller?: {
+    id?: number;
+    name?: string;
+    phoneNumber?: string;
+    avataImage?: string;
+    avatarImage?: string;
+  };
+  sellerPhoneNumber?: string; // Direct field
+  sellerName?: string; // Direct field
+  sellerId?: number; // Direct field
   imgs?: {
     thumbnails?: string[];
   };
@@ -35,6 +52,129 @@ interface SingleItemProps {
 
 const SingleItem = ({ item, onRemove }: SingleItemProps) => {
   const dispatch = useDispatch<AppDispatch>();
+  const { user } = useUserStore();
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [sellerInfo, setSellerInfo] = useState<{
+    phoneNumber?: string;
+    sellerId?: number;
+    sellerName?: string;
+    avatarImage?: string;
+  }>({});
+  const [isLoadingSeller, setIsLoadingSeller] = useState(false);
+
+  // Fetch seller information - exactly like QuickViewModal
+  const fetchSellerInfo = async () => {
+    try {
+      setIsLoadingSeller(true);
+
+      // Get valid post ID
+      const validPostId = item.postId || item.id;
+
+      // Check if post ID exists
+      if (!validPostId || validPostId <= 0) {
+        console.error("Cannot fetch seller info: invalid post ID", {
+          hasItem: !!item,
+          postId: item.postId,
+          itemId: item.id,
+        });
+        setSellerInfo({
+          phoneNumber: "Not available",
+          sellerId: 0,
+          sellerName: "Unknown Seller",
+        });
+        setIsLoadingSeller(false);
+        return;
+      }
+
+      // Always fetch the full post data to get userId
+      console.log("Fetching post data for ID:", validPostId);
+      const postResponse = await postsService.getById(Number(validPostId));
+
+      if (!postResponse.isSuccess || !postResponse.data) {
+        console.error("Failed to fetch post data:", postResponse.message);
+        setSellerInfo({
+          phoneNumber: "Not available",
+          sellerId: 0,
+          sellerName: "Unknown Seller",
+        });
+        return;
+      }
+
+      // Extract userId from post response
+      const postData = postResponse.data;
+      const userId = postData.userId || Number(postData.authorId);
+      const userName = postData.userName || postData.authorName;
+
+      console.log("Post data retrieved:", {
+        postId: validPostId,
+        userId: userId,
+        userName: userName,
+      });
+
+      if (!userId) {
+        console.error(
+          "Cannot fetch seller info: userId not found in post data"
+        );
+        setSellerInfo({
+          phoneNumber: "Not available",
+          sellerId: 0,
+          sellerName: userName || "Unknown Seller",
+        });
+        return;
+      }
+
+      // Fetch user/seller information
+      console.log("Fetching user data for userId:", userId);
+      const userResponse = await usersService.getById(Number(userId));
+
+      if (userResponse.isSuccess && userResponse.data) {
+        const userData = userResponse.data;
+        console.log("Seller info retrieved:", {
+          sellerId: userData.id,
+          sellerName: userData.userName,
+          phoneNumber: userData.phoneNumber ? "Available" : "Not available",
+        });
+
+        setSellerInfo({
+          phoneNumber: userData.phoneNumber || "Not available",
+          sellerId: userData.id,
+          sellerName: userData.userName || userData.username || "Seller",
+          avatarImage: userData.avataImage,
+        });
+      } else {
+        console.error("Failed to fetch seller info:", userResponse.message);
+        setSellerInfo({
+          phoneNumber: "Not available",
+          sellerId: Number(userId),
+          sellerName: userName || "Seller",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching seller information:", error);
+      setSellerInfo({
+        phoneNumber: "Not available",
+        sellerId: 0,
+        sellerName: "Seller",
+      });
+    } finally {
+      setIsLoadingSeller(false);
+    }
+  };
+
+  const handleContactSeller = async () => {
+    // Check if we have valid post ID
+    const validPostId = item.postId || item.id;
+
+    if (!validPostId || validPostId <= 0) {
+      toast.error("Cannot contact seller: Invalid item information");
+      console.error("Invalid post ID:", { postId: item.postId, id: item.id });
+      return;
+    }
+
+    // Fetch seller info first, then open modal
+    await fetchSellerInfo();
+    setShowContactModal(true);
+  };
 
   const handleRemoveFromWishlist = async () => {
     try {
@@ -49,35 +189,64 @@ const SingleItem = ({ item, onRemove }: SingleItemProps) => {
         userId: item.userId,
       });
 
-      // The ID from the wishlist API response should be the favorites table ID
-      const favoriteIdToDelete = item.favoriteId || item.id;
-
-      console.log("Using favoriteId for deletion:", favoriteIdToDelete);
-
-      if (!favoriteIdToDelete) {
+      // Get userId from current user
+      if (!user?.id) {
         toast.dismiss();
-        toast.error("Cannot remove item: Invalid favorite ID");
+        toast.error("Cannot remove item: User not logged in");
         return;
       }
 
-      // Call the DELETE API to remove from favorites
-      await removeFromFavorites(favoriteIdToDelete);
+      // item.id is the Post ID (returned from GET /api/favorites/user/{userId})
+      const postIdToDelete = item.id;
 
-      // Remove from Redux store (local state) using postId if available, otherwise use id
-      const itemIdForRedux = item.postId || item.id;
-      dispatch(removeItemFromWishlist(itemIdForRedux));
+      console.log("Using userId:", user.id, "and postId:", postIdToDelete);
+
+      if (!postIdToDelete) {
+        toast.dismiss();
+        toast.error("Cannot remove item: Invalid post ID");
+        return;
+      }
+
+      // Call the DELETE API using userId and postId
+      // DELETE /api/favorites/user/{userId}/post/{postId}
+      console.log(
+        "Calling DELETE API with userId:",
+        user.id,
+        "postId:",
+        postIdToDelete
+      );
+      const deleteResponse = await removeFromFavorites(user.id, postIdToDelete);
+      console.log("DELETE API response:", deleteResponse);
+
+      // Remove from Redux store (local state)
+      dispatch(removeItemFromWishlist(postIdToDelete));
 
       toast.dismiss();
-      toast.success("Item removed from wishlist");
+      toast.success("Item removed from wishlist successfully!");
 
       // Call parent component's onRemove callback to refresh the list
+      // Small delay to ensure backend has processed the deletion
       if (onRemove) {
-        onRemove();
+        setTimeout(() => {
+          onRemove();
+        }, 100);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       toast.dismiss();
+      const err = error as {
+        message?: string;
+        response?: { data?: { message?: string }; status?: number };
+      };
       console.error("Error removing from wishlist:", error);
-      toast.error("Failed to remove item from wishlist");
+      console.error("Error details:", {
+        message: err?.message,
+        response: err?.response?.data,
+        status: err?.response?.status,
+      });
+
+      const errorMessage =
+        err?.response?.data?.message || "Failed to remove item from wishlist";
+      toast.error(errorMessage);
     }
   };
 
@@ -122,6 +291,12 @@ const SingleItem = ({ item, onRemove }: SingleItemProps) => {
                 height={70}
                 className="object-cover w-full h-full"
                 unoptimized={true}
+                onError={(e) => {
+                  console.error("Image failed to load:", getImageUrl(item));
+                  // Fallback to placeholder on error
+                  e.currentTarget.src =
+                    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='70' viewBox='0 0 80 70' fill='%23f3f4f6'%3E%3Crect width='80' height='70' fill='%23e5e7eb'/%3E%3Cpath d='M28 25h24v4H28zm0 8h16v4H28zm0 8h20v4H28z' fill='%239ca3af'/%3E%3C/svg%3E";
+                }}
               />
             </div>
 
@@ -153,29 +328,48 @@ const SingleItem = ({ item, onRemove }: SingleItemProps) => {
         </div>
       </div>
 
-      <div className="min-w-[150px] flex justify-end">
+      <div className="min-w-[150px] flex justify-end gap-2">
+        {/* Contact Seller Button */}
         <button
-          onClick={() => handleRemoveFromWishlist()}
-          className="inline-flex items-center gap-2 text-dark hover:text-white bg-gray-1 border border-gray-3 py-2.5 px-4 rounded-md ease-out duration-200 hover:bg-red hover:border-red"
+          onClick={handleContactSeller}
+          className="inline-flex items-center gap-2 text-dark hover:text-white bg-gray-1 border border-gray-3 py-2.5 px-4 rounded-md ease-out duration-200 hover:bg-blue hover:border-blue"
+          title="Contact seller about this item"
         >
           <svg
             width="16"
             height="16"
-            viewBox="0 0 16 16"
+            viewBox="0 0 20 20"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4m2 0v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4h9.334z"
+              d="M8 12h.01M12 12h.01M16 12c0 4.418-4.477 8-10 8a11.984 11.984 0 01-3.347-.48L0 21l1.48-2.653A7.966 7.966 0 010 14c0-4.418 4.477-8 10-8s10 3.582 10 8z"
               stroke="currentColor"
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
           </svg>
-          Remove
+          Contact
         </button>
       </div>
+
+      {/* Contact Seller Modal */}
+      <ContactSellerModal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        sellerInfo={{
+          phoneNumber: sellerInfo.phoneNumber || "Not available",
+          sellerId: sellerInfo.sellerId || 0,
+          sellerName: sellerInfo.sellerName || "Seller",
+          avatarImage: sellerInfo.avatarImage,
+        }}
+        item={{
+          id: item.postId || item.id || 0,
+          title: item.title || "Item",
+        }}
+        isLoading={isLoadingSeller}
+      />
     </div>
   );
 };

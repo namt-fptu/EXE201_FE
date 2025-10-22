@@ -17,6 +17,22 @@ export interface ApiResponse<T> {
 
 export const packageService = {
   /**
+   * Get all available packages
+   * @returns Promise with list of all packages
+   */
+  async getAllPackages() {
+    try {
+      console.log("PackageService: Fetching all packages");
+      const response = await api.get("packages");
+      console.log("PackageService: All packages response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("PackageService: Error loading packages:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Get active package for a user
    * @param userId - The user ID to get the active package for
    * @returns Promise with active package data or null

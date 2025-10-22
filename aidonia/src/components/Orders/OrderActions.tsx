@@ -1,6 +1,11 @@
 import React from "react";
 
-const OrderActions = ({ toggleEdit, toggleDetails }: any) => {
+interface OrderActionsProps {
+  toggleEdit: () => void;
+  toggleDetails: () => void;
+}
+
+const OrderActions = ({ toggleEdit, toggleDetails }: OrderActionsProps) => {
   return (
     <>
       <button

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import CustomSelect from "./CustomSelect";
 import { menuData } from "./menuData";
 import Dropdown from "./Dropdown";
@@ -10,13 +11,26 @@ import { useClickOutside } from "@/hooks/use-click-outside";
 import api from "@/services/axios";
 
 const Header = () => {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("0"); // Track selected category
   const [navigationOpen, setNavigationOpen] = useState(false);
   const [stickyMenu, setStickyMenu] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const { user, isAuthenticated, logout, isTokenExpired } = useUserStore();
+
+  // Debug: Log user avatar info
+  useEffect(() => {
+    if (user) {
+      console.log("🎨 Header: User avatar info:", {
+        hasAvatar: !!user.avataImage,
+        avatarUrl: user.avataImage,
+        userName: user.userName,
+      });
+    }
+  }, [user]);
 
   // Click outside handler for user dropdown
   const userDropdownRef = useClickOutside<HTMLDivElement>(() => {
@@ -117,6 +131,34 @@ const Header = () => {
     loadCategories(); // Load categories when component mounts
   }, [loadCategories]);
 
+  // Handle search form submission
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Build URL with search and category parameters
+    const params = new URLSearchParams();
+
+    if (searchQuery.trim()) {
+      params.append("search", searchQuery.trim());
+    }
+
+    if (selectedCategory && selectedCategory !== "0") {
+      params.append("category", selectedCategory);
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `/shop-with-sidebar?${queryString}`
+      : `/shop-with-sidebar`;
+
+    router.push(url);
+  };
+
+  // Handle category selection change
+  const handleCategoryChange = (categoryValue: string) => {
+    setSelectedCategory(categoryValue);
+  };
+
   // Use categories from state, fallback to empty array if still loading
   const options =
     categories.length > 0
@@ -148,9 +190,13 @@ const Header = () => {
             </Link>
 
             <div className="max-w-[475px] w-full">
-              <form>
+              <form onSubmit={handleSearch}>
                 <div className="flex items-center">
-                  <CustomSelect options={options} />
+                  <CustomSelect
+                    options={options}
+                    selectedValue={selectedCategory}
+                    onChange={handleCategoryChange}
+                  />
 
                   <div className="relative max-w-[333px] sm:min-w-[333px] w-full">
                     {/* <!-- divider --> */}
@@ -167,6 +213,7 @@ const Header = () => {
                     />
 
                     <button
+                      type="submit"
                       id="search-btn"
                       aria-label="Search"
                       className="flex items-center justify-center absolute right-3 top-1/2 -translate-y-1/2 ease-in duration-200 hover:text-blue"
@@ -248,6 +295,16 @@ const Header = () => {
                             width={40}
                             height={40}
                             className="w-full h-full object-cover"
+                            unoptimized={user.avataImage.includes(
+                              "firebasestorage.googleapis.com"
+                            )}
+                            onError={(e) => {
+                              console.error(
+                                "Failed to load avatar in Header:",
+                                user.avataImage
+                              );
+                              e.currentTarget.style.display = "none";
+                            }}
                           />
                         ) : (
                           <div className="w-full h-full bg-blue flex items-center justify-center">

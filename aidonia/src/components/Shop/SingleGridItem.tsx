@@ -3,17 +3,16 @@ import React, { useState } from "react";
 import { Product } from "@/types/product";
 import { useModalContext } from "@/app/context/QuickViewModalContext";
 import { updateQuickView } from "@/redux/features/quickView-slice";
-import { addItemToCart } from "@/redux/features/cart-slice";
 import { addItemToWishlist } from "@/redux/features/wishlist-slice";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/redux/store";
 import { toast } from "sonner";
 import Link from "next/link";
 import Image from "next/image";
+import { getImageUrl } from "@/utils/image-helper";
 
 const SingleGridItem = ({ item }: { item: Product }) => {
   const { openModal } = useModalContext();
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
 
   const dispatch = useDispatch<AppDispatch>();
@@ -21,29 +20,6 @@ const SingleGridItem = ({ item }: { item: Product }) => {
   // update the QuickView state
   const handleQuickViewUpdate = () => {
     dispatch(updateQuickView({ ...item }));
-  };
-
-  // add to cart
-  const handleAddToCart = async () => {
-    setIsAddingToCart(true);
-    try {
-      dispatch(
-        addItemToCart({
-          ...item,
-          quantity: 1,
-        })
-      );
-      toast.success(`${item.title} added to cart!`, {
-        duration: 3000,
-        description: "You can view your cart anytime",
-      });
-    } catch (error) {
-      toast.error("Failed to add item to cart", {
-        duration: 3000,
-      });
-    } finally {
-      setIsAddingToCart(false);
-    }
   };
 
   const handleItemToWishList = async () => {
@@ -69,10 +45,53 @@ const SingleGridItem = ({ item }: { item: Product }) => {
     }
   };
 
+  // Debug: Log item structure
+  const imageUrl = getImageUrl(item);
+  console.log("SingleGridItem - Item:", {
+    id: item.id,
+    title: item.title,
+    postImages: (item as any).postImages,
+    imgs: item.imgs,
+    resolvedImageUrl: imageUrl,
+  });
+
   return (
     <div className="group">
       <div className="relative overflow-hidden flex items-center justify-center rounded-lg bg-white shadow-1 min-h-[270px] mb-4">
-        <Image src={item.imgs.previews[0]} alt="" width={250} height={250} />
+        {/* Use regular img tag for Firebase Storage to avoid Next.js optimization issues */}
+        {imageUrl.includes("firebasestorage.googleapis.com") ? (
+          <img
+            src={imageUrl}
+            alt={item.title || "Product"}
+            style={{ maxWidth: "250px", maxHeight: "250px", objectFit: "contain" }}
+            onError={(e) => {
+              console.error(
+                "Image failed to load for item:",
+                item.id,
+                "URL:",
+                imageUrl
+              );
+              e.currentTarget.src = "/images/products/product-01.png";
+            }}
+          />
+        ) : (
+          <Image
+            src={imageUrl}
+            alt={item.title || "Product"}
+            width={250}
+            height={250}
+            unoptimized={true}
+            onError={(e) => {
+              console.error(
+                "Image failed to load for item:",
+                item.id,
+                "URL:",
+                imageUrl
+              );
+              e.currentTarget.src = "/images/products/product-01.png";
+            }}
+          />
+        )}
 
         <div className="absolute left-0 bottom-0 translate-y-full w-full flex items-center justify-center gap-2.5 pb-5 ease-linear duration-200 group-hover:translate-y-0">
           <button
@@ -105,26 +124,6 @@ const SingleGridItem = ({ item }: { item: Product }) => {
                 fill=""
               />
             </svg>
-          </button>
-
-          <button
-            onClick={() => handleAddToCart()}
-            disabled={isAddingToCart}
-            className="inline-flex items-center gap-2 font-medium text-custom-sm py-[7px] px-5 rounded-[5px] bg-blue text-white ease-out duration-200 hover:bg-blue-dark disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            {isAddingToCart ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Adding...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17M17 13v4a2 2 0 01-2 2H9a2 2 0 01-2-2v-4m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
-                </svg>
-                Add to cart
-              </>
-            )}
           </button>
 
           <button
@@ -199,8 +198,12 @@ const SingleGridItem = ({ item }: { item: Product }) => {
       </h3>
 
       <span className="flex items-center gap-2 font-medium text-lg">
-        <span className="text-dark">${item.discountedPrice}</span>
-        <span className="text-dark-4 line-through">${item.price}</span>
+        <span className="text-dark">
+          {item.discountedPrice.toLocaleString("vi-VN")}₫
+        </span>
+        <span className="text-dark-4 line-through">
+          {item.price.toLocaleString("vi-VN")}₫
+        </span>
       </span>
     </div>
   );
