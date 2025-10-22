@@ -1,21 +1,26 @@
 "use client";
+import React, { useState } from "react";
 
-import { useState } from "react";
-import { Category } from "@/services/categories";
-
-interface CategoryItemProps {
-  category: Category;
+interface ConditionItemProps {
+  condition: {
+    name: string;
+    value: string;
+  };
   selected: boolean;
-  onToggle: (id: number) => void;
+  onToggle: (value: string) => void;
 }
 
-const CategoryItem = ({ category, selected, onToggle }: CategoryItemProps) => {
+const ConditionItem = ({
+  condition,
+  selected,
+  onToggle,
+}: ConditionItemProps) => {
   return (
     <button
       className={`${
         selected && "text-blue"
       } group flex items-center justify-between w-full ease-out duration-200 hover:text-blue`}
-      onClick={() => onToggle(category.id)}
+      onClick={() => onToggle(condition.value)}
     >
       <div className="flex items-center gap-2">
         <div
@@ -41,47 +46,51 @@ const CategoryItem = ({ category, selected, onToggle }: CategoryItemProps) => {
           </svg>
         </div>
 
-        <span>{category.categoryName}</span>
+        <span>{condition.name}</span>
       </div>
     </button>
   );
 };
 
-interface CategoryDropdownProps {
-  categories: Category[];
-  selectedCategories: number[];
-  onCategoryChange: (categories: number[]) => void;
+interface ConditionDropdownProps {
+  selectedConditions: string[];
+  onConditionChange: (conditions: string[]) => void;
 }
 
-const CategoryDropdown = ({
-  categories,
-  selectedCategories,
-  onCategoryChange,
-}: CategoryDropdownProps) => {
+const ConditionDropdown = ({
+  selectedConditions,
+  onConditionChange,
+}: ConditionDropdownProps) => {
   const [toggleDropdown, setToggleDropdown] = useState(true);
 
-  const handleToggle = (id: number) => {
-    if (selectedCategories.includes(id)) {
-      onCategoryChange(selectedCategories.filter((c) => c !== id));
+  const conditions = [
+    { name: "New", value: "NEW" },
+    { name: "Like New", value: "LIKE_NEW" },
+    { name: "Good", value: "GOOD" },
+    { name: "Fair", value: "FAIR" },
+    { name: "Poor", value: "POOR" },
+  ];
+
+  const handleToggle = (value: string) => {
+    if (selectedConditions.includes(value)) {
+      onConditionChange(selectedConditions.filter((c) => c !== value));
     } else {
-      onCategoryChange([...selectedCategories, id]);
+      onConditionChange([...selectedConditions, value]);
     }
   };
 
   return (
     <div className="bg-white shadow-1 rounded-lg">
       <div
-        onClick={(e) => {
-          e.preventDefault();
-          setToggleDropdown(!toggleDropdown);
-        }}
+        onClick={() => setToggleDropdown(!toggleDropdown)}
         className={`cursor-pointer flex items-center justify-between py-3 pl-6 pr-5.5 ${
           toggleDropdown && "shadow-filter"
         }`}
       >
-        <p className="text-dark">Category</p>
+        <p className="text-dark">Condition</p>
         <button
-          aria-label="button for category dropdown"
+          onClick={() => setToggleDropdown(!toggleDropdown)}
+          aria-label="button for condition dropdown"
           className={`text-dark ease-out duration-200 ${
             toggleDropdown && "rotate-180"
           }`}
@@ -104,18 +113,17 @@ const CategoryDropdown = ({
         </button>
       </div>
 
-      {/* dropdown && 'shadow-filter */}
       {/* <!-- dropdown menu --> */}
       <div
         className={`flex-col gap-3 py-6 pl-6 pr-5.5 ${
           toggleDropdown ? "flex" : "hidden"
         }`}
       >
-        {categories.map((category, key) => (
-          <CategoryItem
+        {conditions.map((condition, key) => (
+          <ConditionItem
             key={key}
-            category={category}
-            selected={selectedCategories.includes(category.id)}
+            condition={condition}
+            selected={selectedConditions.includes(condition.value)}
             onToggle={handleToggle}
           />
         ))}
@@ -124,4 +132,4 @@ const CategoryDropdown = ({
   );
 };
 
-export default CategoryDropdown;
+export default ConditionDropdown;

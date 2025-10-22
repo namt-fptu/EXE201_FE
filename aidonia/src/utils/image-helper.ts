@@ -52,6 +52,7 @@ export const getImageUrl = (item: {
   image?: string;
   imgs?: {
     thumbnails?: string[];
+    previews?: string[];
   };
   postImages?: Array<string | { url: string }>; // Added support for postImages
 }): string => {
@@ -59,8 +60,9 @@ export const getImageUrl = (item: {
   // 1. imageUrl (Firebase)
   // 2. image
   // 3. First postImage (either string or object with url)
-  // 4. thumbnails
-  // 5. placeholder
+  // 4. previews (for Product type)
+  // 5. thumbnails
+  // 6. placeholder
 
   // Check imageUrl (Firebase URLs)
   if (item.imageUrl && isValidUrl(item.imageUrl)) {
@@ -89,6 +91,18 @@ export const getImageUrl = (item: {
 
     if (imageUrl && isValidUrl(imageUrl)) {
       return processFirebaseUrl(imageUrl);
+    }
+  }
+
+  // Check previews (for Product type with previews array)
+  if (
+    item.imgs?.previews &&
+    Array.isArray(item.imgs.previews) &&
+    item.imgs.previews.length > 0
+  ) {
+    const previewUrl = item.imgs.previews[0];
+    if (previewUrl && isValidUrl(previewUrl)) {
+      return processFirebaseUrl(previewUrl);
     }
   }
 

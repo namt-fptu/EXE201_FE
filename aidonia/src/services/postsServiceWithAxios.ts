@@ -37,6 +37,18 @@ export interface PostsResponse {
   exception: string | null;
 }
 
+export interface PagedPostsResponse {
+  isSuccess: boolean;
+  data: {
+    items: Post[];
+    pageNumber: number;
+    pageSize: number;
+    totalPages: number;
+  };
+  message: string;
+  exception: string | null;
+}
+
 export interface PostResponse {
   isSuccess: boolean;
   data: Post;
@@ -45,7 +57,37 @@ export interface PostResponse {
 }
 
 export const postsService = {
-  // Get all posts
+  // Get all posts with pagination and search (using POST endpoint)
+  getPaged: async (
+    page: number = 1,
+    limit: number = 20,
+    status?: string,
+    searchTerm?: string,
+    categoryName?: string
+  ): Promise<PagedPostsResponse> => {
+    try {
+      const requestBody = {
+        pageNumber: page,
+        pageSize: limit,
+        searchTerm: searchTerm || "",
+        status: status || "",
+        categoryName: categoryName || "",
+      };
+
+      const response = await api.post<PagedPostsResponse>(
+        "/posts/paged",
+        requestBody
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error("Error fetching paged posts:", error);
+      throw new Error(
+        error.response?.data?.message || "Failed to fetch posts."
+      );
+    }
+  },
+
+  // Get all posts (legacy method for backward compatibility)
   getAll: async (
     page: number = 1,
     limit: number = 20,

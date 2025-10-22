@@ -1,21 +1,72 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Breadcrumb from "../Common/Breadcrumb";
 import CustomSelect from "./CustomSelect";
 import CategoryDropdown from "./CategoryDropdown";
-import GenderDropdown from "./GenderDropdown";
-import SizeDropdown from "./SizeDropdown";
-import ColorsDropdwon from "./ColorsDropdwon";
+import ConditionDropdown from "./ConditionDropdown";
 import PriceDropdown from "./PriceDropdown";
-import shopData from "../Shop/shopData";
 import SingleGridItem from "../Shop/SingleGridItem";
 import SingleListItem from "../Shop/SingleListItem";
+import { categoriesService, Category } from "@/services/categories";
+import { postsService, Post } from "@/services/postsServiceWithAxios";
+import { Product } from "@/types/product";
+import { toast } from "react-hot-toast";
+
+// Helper function to convert Post to Product
+const convertPostToProduct = (
+  post: Post
+): Product & { postImages?: Array<{ url: string; id: string }> } => {
+  // Get image URLs and filter out empty strings
+  const imageUrls =
+    post.postImages
+      ?.map((img) => img.url)
+      .filter((url) => url && url.trim() !== "") || [];
+
+  // Use placeholder if no images available
+  const thumbnails =
+    imageUrls.length > 0 ? imageUrls : ["/images/products/product-01.png"];
+
+  const previews =
+    imageUrls.length > 0 ? imageUrls : ["/images/products/product-01.png"];
+
+  return {
+    id: Number(post.id),
+    title: post.title,
+    price: post.price,
+    discountedPrice: post.price, // Posts don't have discounted price
+    reviews: 0, // Posts don't have reviews yet
+    imgs: {
+      thumbnails,
+      previews,
+    },
+    // Preserve original postImages for Firebase helper
+    postImages: post.postImages,
+  };
+};
 
 const ShopWithSidebar = () => {
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
+  const categoryParam = searchParams.get("category") || "";
+
   const [productStyle, setProductStyle] = useState("grid");
   const [productSidebar, setProductSidebar] = useState(false);
   const [stickyMenu, setStickyMenu] = useState(false);
 
+  // API data states
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [totalPosts, setTotalPosts] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [postsPerPage] = useState(12);
+
+  // Filter states
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState("0");
   const handleStickyMenu = () => {
     if (window.scrollY >= 80) {
       setStickyMenu(true);
@@ -30,53 +81,118 @@ const ShopWithSidebar = () => {
     { label: "Old Products", value: "2" },
   ];
 
-  const categories = [
-    {
-      name: "Desktop",
-      products: 10,
-      isRefined: true,
-    },
-    {
-      name: "Laptop",
-      products: 12,
-      isRefined: false,
-    },
-    {
-      name: "Monitor",
-      products: 30,
-      isRefined: false,
-    },
-    {
-      name: "UPS",
-      products: 23,
-      isRefined: false,
-    },
-    {
-      name: "Phone",
-      products: 10,
-      isRefined: false,
-    },
-    {
-      name: "Watch",
-      products: 13,
-      isRefined: false,
-    },
-  ];
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await categoriesService.getAll();
+        if (response.isSuccess && response.data) {
+          setCategories(response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        toast.error("Failed to load categories");
+      }
+    };
 
-  const genders = [
-    {
-      name: "Men",
-      products: 10,
-    },
-    {
-      name: "Women",
-      products: 23,
-    },
-    {
-      name: "Unisex",
-      products: 8,
-    },
-  ];
+    fetchCategories();
+  }, []);
+
+  // Set initial category filter from URL parameter
+  useEffect(() => {
+    if (categoryParam) {
+      const categoryId = Number(categoryParam);
+      if (categoryId && !isNaN(categoryId)) {
+        setSelectedCategories([categoryId]);
+      }
+    }
+  }, [categoryParam]);
+
+  // Fetch posts based on filters and search query
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
+
+        // Get category name for API call if category is selected
+        let categoryName = "";
+        if (selectedCategories.length > 0) {
+          const selectedCategory = categories.find(
+            (cat) => Number(cat.id) === selectedCategories[0]
+          );
+          if (selectedCategory) {
+            categoryName = selectedCategory.categoryName || "";
+          }
+        }
+
+        // Use the new getPaged endpoint with proper search
+        const response = await postsService.getPaged(
+          currentPage,
+          postsPerPage,
+          "APPROVED",
+          searchQuery, // Search term
+          categoryName // Category name for backend filtering
+        );
+
+        if (response.isSuccess && response.data && response.data.items) {
+          let filteredPosts = response.data.items;
+
+          // Additional client-side filter by conditions (backend doesn't support this yet)
+          if (selectedConditions.length > 0) {
+            filteredPosts = filteredPosts.filter((post) =>
+              selectedConditions.includes(post.condition)
+            );
+          }
+
+          // Sort posts - need to create a copy since we might be sorting
+          const sortedPosts = [...filteredPosts];
+          if (sortBy === "0") {
+            // Latest products (newest first)
+            sortedPosts.sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime()
+            );
+          } else if (sortBy === "2") {
+            // Old products (oldest first)
+            sortedPosts.sort(
+              (a, b) =>
+                new Date(a.createdAt).getTime() -
+                new Date(b.createdAt).getTime()
+            );
+          }
+
+          setPosts(sortedPosts);
+          setTotalPosts(sortedPosts.length);
+
+          // Convert posts to products
+          const convertedProducts = sortedPosts.map(convertPostToProduct);
+          setProducts(convertedProducts);
+        }
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+        toast.error("Failed to load products");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, [
+    currentPage,
+    postsPerPage,
+    selectedCategories,
+    selectedConditions,
+    sortBy,
+    searchQuery,
+    categories, // Add categories to dependencies since we use it to get category name
+  ]);
+
+  const handleClearFilters = () => {
+    setSelectedCategories([]);
+    setSelectedConditions([]);
+    setSortBy("0");
+  };
 
   useEffect(() => {
     window.addEventListener("scroll", handleStickyMenu);
@@ -100,7 +216,15 @@ const ShopWithSidebar = () => {
   return (
     <>
       <Breadcrumb
-        title={"Explore All Products"}
+        title={
+          searchQuery && selectedCategories.length > 0
+            ? `Search "${searchQuery}" in ${categories.find((c) => Number(c.id) === selectedCategories[0])?.categoryName || "Category"}`
+            : searchQuery
+              ? `Search Results: "${searchQuery}"`
+              : selectedCategories.length > 0
+                ? `${categories.find((c) => Number(c.id) === selectedCategories[0])?.categoryName || "Category"} Products`
+                : "Explore All Products"
+        }
         pages={["shop", "/", "shop with sidebar"]}
       />
       <section className="overflow-hidden relative pb-20 pt-5 lg:pt-20 xl:pt-28 bg-[#f3f4f6]">
@@ -152,21 +276,28 @@ const ShopWithSidebar = () => {
                   <div className="bg-white shadow-1 rounded-lg py-4 px-5">
                     <div className="flex items-center justify-between">
                       <p>Filters:</p>
-                      <button className="text-blue">Clean All</button>
+                      <button
+                        type="button"
+                        onClick={handleClearFilters}
+                        className="text-blue hover:underline"
+                      >
+                        Clean All
+                      </button>
                     </div>
                   </div>
 
                   {/* <!-- category box --> */}
-                  <CategoryDropdown categories={categories} />
+                  <CategoryDropdown
+                    categories={categories}
+                    selectedCategories={selectedCategories}
+                    onCategoryChange={setSelectedCategories}
+                  />
 
-                  {/* <!-- gender box --> */}
-                  <GenderDropdown genders={genders} />
-
-                  {/* // <!-- size box --> */}
-                  <SizeDropdown />
-
-                  {/* // <!-- color box --> */}
-                  <ColorsDropdwon />
+                  {/* <!-- condition box --> */}
+                  <ConditionDropdown
+                    selectedConditions={selectedConditions}
+                    onConditionChange={setSelectedConditions}
+                  />
 
                   {/* // <!-- price range box --> */}
                   <PriceDropdown />
@@ -181,11 +312,19 @@ const ShopWithSidebar = () => {
                 <div className="flex items-center justify-between">
                   {/* <!-- top bar left --> */}
                   <div className="flex flex-wrap items-center gap-4">
-                    <CustomSelect options={options} />
+                    <CustomSelect
+                      options={options}
+                      onChange={(value) => setSortBy(value)}
+                    />
 
                     <p>
-                      Showing <span className="text-dark">9 of 50</span>{" "}
-                      Products
+                      Showing{" "}
+                      <span className="text-dark">
+                        {products.length} of {totalPosts}
+                      </span>{" "}
+                      {searchQuery
+                        ? `Results for "${searchQuery}"`
+                        : "Products"}
                     </p>
                   </div>
 
@@ -271,21 +410,36 @@ const ShopWithSidebar = () => {
               </div>
 
               {/* <!-- Products Grid Tab Content Start --> */}
-              <div
-                className={`${
-                  productStyle === "grid"
-                    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-7.5 gap-y-9"
-                    : "flex flex-col gap-7.5"
-                }`}
-              >
-                {shopData.map((item, key) =>
-                  productStyle === "grid" ? (
-                    <SingleGridItem item={item} key={key} />
-                  ) : (
-                    <SingleListItem item={item} key={key} />
-                  )
-                )}
-              </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue"></div>
+                </div>
+              ) : products.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <p className="text-gray-500 text-lg mb-2">
+                    No products found
+                  </p>
+                  <p className="text-gray-400 text-sm">
+                    Try adjusting your filters
+                  </p>
+                </div>
+              ) : (
+                <div
+                  className={`${
+                    productStyle === "grid"
+                      ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-7.5 gap-y-9"
+                      : "flex flex-col gap-7.5"
+                  }`}
+                >
+                  {products.map((item, key) =>
+                    productStyle === "grid" ? (
+                      <SingleGridItem item={item} key={key} />
+                    ) : (
+                      <SingleListItem item={item} key={key} />
+                    )
+                  )}
+                </div>
+              )}
               {/* <!-- Products Grid Tab Content End --> */}
 
               {/* <!-- Products Pagination Start --> */}

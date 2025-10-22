@@ -223,11 +223,17 @@ export default function ChatWindow({
           chatSignalRService.setCallbacks({
             onMessageReceived: (message: Message) => {
               setMessages((prev) => {
-                // Avoid duplicates
-                if (!prev.find((m) => m.id === message.id)) {
-                  return [...prev, message];
+                // Avoid duplicates - check if message with this ID already exists
+                const existingMessage = prev.find((m) => m.id === message.id);
+                if (existingMessage) {
+                  console.log(
+                    "⚠️ Duplicate message ignored (already in state):",
+                    message.id
+                  );
+                  return prev;
                 }
-                return prev;
+                console.log("✅ New message received via SignalR:", message.id);
+                return [...prev, message];
               });
               scrollToBottom();
 
@@ -359,8 +365,10 @@ export default function ChatWindow({
 
       if (result.isSuccess && result.data) {
         console.log("✅ Message sent successfully:", result.data);
-        // Add message to local state immediately for better UX
-        setMessages((prev) => [...prev, result.data]);
+        // Don't add message here - let SignalR broadcast handle it
+        // This prevents duplicate messages when both sender and receiver
+        // get the message from the server
+        // The onMessageReceived callback will add it to the state
         scrollToBottom();
       } else {
         console.error("❌ Failed to send message - API response:", result);
@@ -555,13 +563,16 @@ export default function ChatWindow({
             <p>No messages yet. Start the conversation!</p>
           </div>
         ) : (
-          messages.map((message) => {
+          messages.map((message, index) => {
             const isOwn = user?.id
               ? getUserIdAsNumber(user.id) === message.senderId
               : false;
+            // Use combination of id and index as key to ensure uniqueness
+            // This handles edge cases where IDs might temporarily conflict
+            const messageKey = `msg-${message.id}-${index}`;
             return (
               <div
-                key={message.id}
+                key={messageKey}
                 className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
               >
                 <div className={`max-w-[70%] ${isOwn ? "order-2" : "order-1"}`}>

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Breadcrumb from "../Common/Breadcrumb";
 import SingleItem from "./SingleItem";
-import { getWishlistPosts, addToFavorites } from "@/services/favorites";
+import { getUserFavoritesRaw, addToFavorites } from "@/services/favorites";
 import useUserStore from "@/redux/userStore";
 import { toast } from "react-hot-toast";
 
@@ -19,6 +19,21 @@ interface WishlistPost {
   categoryName?: string;
   status: string;
   favoriteId?: number; // Backup field name
+  // Seller information
+  seller?: {
+    id?: number;
+    name?: string;
+    phoneNumber?: string;
+    avataImage?: string;
+    avatarImage?: string;
+  };
+  sellerPhoneNumber?: string;
+  sellerName?: string;
+  sellerId?: number;
+  postImages?: Array<string | { url: string }>;
+  imgs?: {
+    thumbnails?: string[];
+  };
   // Add other properties as needed based on your API response
 }
 
@@ -26,12 +41,18 @@ export const Wishlist = () => {
   const { user, isAuthenticated } = useUserStore();
   const [wishlistItems, setWishlistItems] = useState<WishlistPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // Add refresh trigger
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
     pageSize: 12,
   });
+
+  // Function to trigger a refresh
+  const refreshWishlist = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
 
   // Function to fetch wishlist items (extracted for reuse)
   const fetchWishlistItems = useCallback(async () => {
@@ -42,62 +63,33 @@ export const Wishlist = () => {
 
     try {
       setLoading(true);
-      const response = await getWishlistPosts(
-        user.id,
-        pagination.currentPage,
-        pagination.pageSize
-      );
+      // Use the GET /api/favorites/user/{userId} endpoint from Swagger
+      const response = await getUserFavoritesRaw(user.id);
 
       // Debug: Log the actual response structure
       console.log("Wishlist API response:", response);
       console.log("Response data:", response?.data);
 
-      // Handle different possible response structures
+      // The GET /api/favorites/user/{userId} endpoint returns a simple list
       let items = [];
-      let paginationData = {
-        currentPage: 1,
-        totalPages: 1,
-        totalItems: 0,
-        pageSize: 12,
-      };
 
       if (response?.success && response?.data) {
-        // Check various possible nested structures
-        if (response.data.items) {
-          items = response.data.items;
-        } else if (response.data.data && response.data.data.items) {
-          items = response.data.data.items;
-          paginationData = {
-            currentPage: response.data.data.pageNumber || 1,
-            totalPages: response.data.data.totalPages || 1,
-            totalItems: response.data.data.totalCount || 0,
-            pageSize: response.data.data.pageSize || 12,
-          };
-        } else if (Array.isArray(response.data)) {
-          items = response.data;
-        }
-
-        // Update pagination data
-        paginationData = {
-          currentPage:
-            response.data.pageNumber || response.data.data?.pageNumber || 1,
-          totalPages:
-            response.data.totalPages || response.data.data?.totalPages || 1,
-          totalItems:
-            response.data.totalCount ||
-            response.data.data?.totalCount ||
-            items.length,
-          pageSize:
-            response.data.pageSize || response.data.data?.pageSize || 12,
-        };
+        // Response format: { success: true, data: [...], message: "..." }
+        items = Array.isArray(response.data) ? response.data : [];
       } else if (response?.data) {
-        // Direct data response
-        if (Array.isArray(response.data)) {
-          items = response.data;
-        } else if (response.data.items) {
-          items = response.data.items;
-        }
+        // Direct data array
+        items = Array.isArray(response.data) ? response.data : [];
+      } else if (Array.isArray(response)) {
+        items = response;
       }
+
+      // Since this endpoint doesn't support pagination, show all items
+      const paginationData = {
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: items.length,
+        pageSize: items.length || 12,
+      };
 
       console.log("Processed items:", items);
       console.log("Pagination data:", paginationData);
@@ -105,28 +97,53 @@ export const Wishlist = () => {
       // Debug: Log first item structure to understand the ID fields
       if (items.length > 0) {
         console.log("First item structure:", items[0]);
+        console.log("First item ALL keys:", Object.keys(items[0]));
         console.log("Available ID fields:", {
           id: items[0].id,
+          Id: items[0].Id, // Check if backend returns capitalized Id
           postId: items[0].postId,
           favoriteId: items[0].favoriteId,
           userId: items[0].userId,
         });
       }
 
-      setWishlistItems(items);
+      // Map items to ensure id field is properly set (backend might return capitalized Id)
+      const mappedItems = items.map((item: WishlistPost) => ({
+        ...item,
+        id: item.id || (item as unknown as { Id: number }).Id, // Use lowercase id, fallback to capitalized Id
+        favoriteId: item.id || (item as unknown as { Id: number }).Id, // Also set favoriteId for clarity
+      }));
+
+      console.log("Mapped items with id:", mappedItems);
+
+      setWishlistItems(mappedItems);
       setPagination(paginationData);
-    } catch (error) {
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number } };
       console.error("Error fetching wishlist items:", error);
-      toast.error("Failed to load wishlist items");
+
+      // If it's a 404 (no favorites found), just show empty list instead of error
+      if (err?.response?.status === 404) {
+        console.log("No favorites found - showing empty list");
+        setWishlistItems([]);
+        setPagination({
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          pageSize: 12,
+        });
+      } else {
+        toast.error("Failed to load wishlist items");
+      }
     } finally {
       setLoading(false);
     }
-  }, [user?.id, isAuthenticated, pagination.currentPage, pagination.pageSize]);
+  }, [user?.id, isAuthenticated]); // Removed pagination dependencies since endpoint doesn't support pagination
 
   // Fetch wishlist items when component mounts or dependencies change
   useEffect(() => {
     fetchWishlistItems();
-  }, [fetchWishlistItems]);
+  }, [fetchWishlistItems, refreshTrigger]); // Add refreshTrigger to dependencies
 
   // Handle page change
   const handlePageChange = (page: number) => {
@@ -218,18 +235,34 @@ export const Wishlist = () => {
                 <p className="text-gray-500">Loading your wishlist...</p>
               </div>
             ) : wishlistItems.length === 0 ? (
-              <div className="text-center py-20">
-                <h3 className="text-xl font-medium text-dark mb-2">
-                  Your wishlist is empty
-                </h3>
-                <p className="text-gray-500 mb-4">
-                  Start adding items to your wishlist!
-                </p>
-                <div className="text-xs text-gray-400 space-y-1">
-                  <div>Debug info: User ID: {user?.id}</div>
-                  <div>Total Items: {pagination.totalItems}</div>
-                  <div>Current Page: {pagination.currentPage}</div>
-                  <div>Check the browser console for API response details</div>
+              <div className="text-center py-20 px-4">
+                <div className="max-w-md mx-auto">
+                  <svg
+                    className="w-24 h-24 mx-auto mb-6 text-gray-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                    />
+                  </svg>
+                  <h3 className="text-2xl font-semibold text-dark mb-3">
+                    Your wishlist is empty
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    Start adding items to your wishlist by clicking the heart
+                    icon on products you love!
+                  </p>
+                  <button
+                    onClick={() => (window.location.href = "/")}
+                    className="inline-block bg-blue text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    Continue Shopping
+                  </button>
                 </div>
               </div>
             ) : (
@@ -260,10 +293,7 @@ export const Wishlist = () => {
                     <SingleItem
                       item={item}
                       key={key}
-                      onRemove={() => {
-                        // Refresh the wishlist after removing an item
-                        fetchWishlistItems();
-                      }}
+                      onRemove={refreshWishlist}
                     />
                   ))}
                 </div>

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Breadcrumb from "../Common/Breadcrumb";
 import Image from "next/image";
 import AddressModal from "./AddressModal";
+import BuyPackageModal from "./BuyPackageModal";
 import useUserStore from "@/redux/userStore";
 import { toast } from "sonner";
 import api from "@/services/axios";
@@ -60,6 +61,7 @@ interface Address {
 const MyAccount = () => {
   const [activeTab, setActiveTab] = useState("posts");
   const [addressModal, setAddressModal] = useState(false);
+  const [buyPackageModal, setBuyPackageModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
   const [userPackages, setUserPackages] = useState([]);
@@ -1111,15 +1113,23 @@ const MyAccount = () => {
               <div className="p-4 sm:p-8.5">
                 <div className="flex items-center justify-between mb-7">
                   <h2 className="font-medium text-xl text-dark">My Packages</h2>
-                  <button
-                    onClick={() => {
-                      console.log("Manual reload packages");
-                      loadUserPackages();
-                    }}
-                    className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    Debug Reload
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setBuyPackageModal(true)}
+                      className="px-6 py-2.5 bg-blue text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                    >
+                      🛒 Buy Package
+                    </button>
+                    <button
+                      onClick={() => {
+                        console.log("Manual reload packages");
+                        loadUserPackages();
+                      }}
+                      className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                    >
+                      Reload
+                    </button>
+                  </div>
                 </div>
 
                 {/* Package List */}
@@ -1849,6 +1859,17 @@ const MyAccount = () => {
       {addressModal && !editingAddress && (
         <AddressModal isOpen={addressModal} closeModal={closeAddressModal} />
       )}
+
+      {/* Buy Package Modal */}
+      <BuyPackageModal
+        isOpen={buyPackageModal}
+        onClose={() => setBuyPackageModal(false)}
+        userId={user?.id || 0}
+        onSuccess={() => {
+          // Reload packages after successful purchase
+          loadUserPackages();
+        }}
+      />
     </>
   );
 };

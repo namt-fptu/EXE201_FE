@@ -3,6 +3,10 @@ const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const config = {
   baseURL: baseUrl,
+  timeout: 30000, // 30 seconds timeout
+  headers: {
+    "Content-Type": "application/json",
+  },
 };
 
 const api = axios.create(config);

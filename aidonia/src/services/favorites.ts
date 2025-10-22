@@ -108,13 +108,41 @@ export const getWishlistPosts = async (
   }
 };
 
-// Remove item from favorites
-export const removeFromFavorites = async (favoriteId: number) => {
+// Get raw favorites list (returns list of favorite posts with full Post data)
+// This is the GET /api/favorites/user/{userId} endpoint shown in Swagger
+export const getUserFavoritesRaw = async (userId: number) => {
   try {
-    const response = await api.delete(`favorites/${favoriteId}`);
+    console.log("Fetching raw favorites for userId:", userId);
+    const response = await api.get(`favorites/user/${userId}`);
+    console.log("Raw favorites response:", response.data);
     return response.data;
   } catch (error) {
+    console.error("Error getting raw favorites:", error);
+    throw error;
+  }
+};
+
+// Remove item from favorites using userId and postId
+// Uses the DELETE /api/favorites/user/{userId}/post/{postId} endpoint from Swagger
+export const removeFromFavorites = async (userId: number, postId: number) => {
+  try {
+    console.log("DELETE Request - User ID:", userId, "Post ID:", postId);
+    console.log("DELETE URL:", `favorites/user/${userId}/post/${postId}`);
+
+    const response = await api.delete(
+      `favorites/user/${userId}/post/${postId}`
+    );
+
+    console.log("DELETE Response:", response);
+    console.log("DELETE Response data:", response.data);
+
+    return response.data;
+  } catch (error: unknown) {
+    const err = error as { response?: { status?: number; data?: unknown } };
     console.error("Error removing from favorites:", error);
+    console.error("Error response:", err?.response);
+    console.error("Error status:", err?.response?.status);
+    console.error("Error data:", err?.response?.data);
     throw error;
   }
 };
@@ -122,6 +150,7 @@ export const removeFromFavorites = async (favoriteId: number) => {
 const favoritesService = {
   addToFavorites,
   getUserFavorites,
+  getUserFavoritesRaw,
   checkIfPostFavorited,
   getWishlistPosts,
   removeFromFavorites,

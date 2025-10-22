@@ -201,7 +201,7 @@ export default function ChatBubble() {
   return (
     <>
       {/* Chat Windows - Bottom Right Corner */}
-      <div className="fixed bottom-20 right-4 flex gap-2 z-[9998]">
+      <div className="fixed bottom-24 right-4 flex gap-2 z-[9998]">
         {openChats.map((chat) => (
           <div
             key={chat.conversationId}
@@ -220,7 +220,7 @@ export default function ChatBubble() {
 
       {/* Conversations List */}
       {isOpen && (
-        <div className="fixed bottom-20 right-4 w-[350px] bg-white rounded-lg shadow-2xl z-[9999]">
+        <div className="fixed bottom-24 right-4 w-[350px] bg-white rounded-lg shadow-2xl z-[9999]">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b bg-blue text-white rounded-t-lg">
             <h3 className="font-semibold text-lg">Messages</h3>
@@ -340,7 +340,7 @@ export default function ChatBubble() {
       {/* Chat Bubble Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-4 right-4 w-14 h-14 bg-blue text-white rounded-full shadow-lg hover:bg-blue-600 transition-all hover:scale-110 z-[9999] flex items-center justify-center"
+        className="fixed bottom-20 right-4 w-14 h-14 bg-blue text-white rounded-full shadow-lg hover:bg-blue-600 transition-all hover:scale-110 z-[9999] flex items-center justify-center"
       >
         {isOpen ? (
           <X className="w-6 h-6" />

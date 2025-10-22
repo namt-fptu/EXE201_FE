@@ -19,6 +19,12 @@ interface ExtendedProduct extends Product {
   description?: string;
   createdAt?: string;
   userId?: number;
+  status?: string;
+  categoryId?: string;
+  authorId?: string;
+  authorName?: string;
+  authorEmail?: string;
+  updatedAt?: string;
 }
 
 const QuickViewModal = () => {
@@ -27,12 +33,15 @@ const QuickViewModal = () => {
 
   const dispatch = useDispatch<AppDispatch>();
 
-  // get the product data
-  const product = useAppSelector(
+  // get the product data from Redux (initial data)
+  const initialProduct = useAppSelector(
     (state) => state.quickViewReducer.value
   ) as ExtendedProduct;
 
   const [activePreview, setActivePreview] = useState(0);
+  const [product, setProduct] = useState<ExtendedProduct>(initialProduct);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // preview modal
   const handlePreviewSlider = () => {
@@ -52,6 +61,98 @@ const QuickViewModal = () => {
     // Dispatch custom event to open contact modal
     document.dispatchEvent(new CustomEvent("open-contact-seller"));
   };
+
+  // Fetch full product details when modal opens
+  useEffect(() => {
+    const fetchFullProductDetails = async () => {
+      // Only fetch if modal is open and we have a product ID
+      if (!isModalOpen || !initialProduct?.id) {
+        return;
+      }
+
+      try {
+        setIsLoadingProduct(true);
+        setFetchError(null);
+
+        console.log("Fetching full product details for ID:", initialProduct.id);
+        const response = await postsService.getById(Number(initialProduct.id));
+
+        if (response.isSuccess && response.data) {
+          const postData = response.data;
+
+          // Debug: Log the postImages structure
+          console.log("Post Images from API:", postData.postImages);
+          if (postData.postImages && postData.postImages.length > 0) {
+            console.log("First image object:", postData.postImages[0]);
+          }
+
+          // Transform the API response to match ExtendedProduct format
+          const fullProductData: ExtendedProduct = {
+            id: Number(postData.id),
+            title: postData.title,
+            description: postData.description,
+            price: postData.price,
+            condition: postData.condition,
+            category: postData.categoryName,
+            createdAt: postData.createdAt,
+            userId: postData.userId || Number(postData.authorId),
+            // Use API image data if available, otherwise preserve Redux data
+            imgs:
+              postData.postImages && postData.postImages.length > 0
+                ? {
+                    // Check if postImages are already URLs or objects with url property
+                    thumbnails: postData.postImages.map((img) =>
+                      typeof img === "string" ? img : img.url
+                    ),
+                    previews: postData.postImages.map((img) =>
+                      typeof img === "string" ? img : img.url
+                    ),
+                  }
+                : initialProduct.imgs || {
+                    thumbnails: [],
+                    previews: [],
+                  },
+            // Required fields from Product type
+            reviews: initialProduct.reviews || 0,
+            discountedPrice: initialProduct.discountedPrice,
+            // Additional fields from API
+            status: postData.status,
+            categoryId: postData.categoryId,
+            authorId: postData.authorId,
+            authorName: postData.authorName,
+            authorEmail: postData.authorEmail,
+            updatedAt: postData.updatedAt,
+          };
+
+          console.log("Full product details loaded:", {
+            ...fullProductData,
+            imageUrls: fullProductData.imgs.previews,
+          });
+
+          setProduct(fullProductData);
+        } else {
+          setFetchError(response.message || "Failed to load product details");
+          console.error("Failed to fetch product details:", response.message);
+        }
+      } catch (error) {
+        console.error("Error fetching product details:", error);
+        setFetchError("Error loading product information");
+      } finally {
+        setIsLoadingProduct(false);
+      }
+    };
+
+    fetchFullProductDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isModalOpen, initialProduct?.id]);
+
+  // Reset product state when modal closes
+  useEffect(() => {
+    if (!isModalOpen) {
+      setProduct(initialProduct);
+      setFetchError(null);
+    }
+  }, [isModalOpen, initialProduct]);
 
   useEffect(() => {
     // closing modal while clicking outside
@@ -124,15 +225,32 @@ const QuickViewModal = () => {
                         activePreview === key && "border-2 border-blue"
                       }`}
                     >
-                      {img && (
-                        <Image
-                          src={img}
-                          alt="thumbnail"
-                          width={61}
-                          height={61}
-                          className="aspect-square"
-                        />
-                      )}
+                      {img &&
+                        (img.includes("firebasestorage.googleapis.com") ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={img}
+                            alt="thumbnail"
+                            style={{
+                              width: "61px",
+                              height: "61px",
+                              objectFit: "cover",
+                              aspectRatio: "1/1",
+                            }}
+                            onError={(e) => {
+                              e.currentTarget.src = "/images/placeholder.png";
+                            }}
+                          />
+                        ) : (
+                          <Image
+                            src={img}
+                            alt="thumbnail"
+                            width={61}
+                            height={61}
+                            className="aspect-square"
+                            unoptimized
+                          />
+                        ))}
                     </button>
                   ))}
                 </div>
@@ -162,13 +280,34 @@ const QuickViewModal = () => {
                     </button>
 
                     {imageSrc ? (
-                      <Image
-                        src={imageSrc}
-                        alt="products-details"
-                        width={400}
-                        height={400}
-                        priority={true}
-                      />
+                      imageSrc.includes("firebasestorage.googleapis.com") ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={imageSrc}
+                          alt="products-details"
+                          style={{
+                            width: "400px",
+                            height: "400px",
+                            objectFit: "contain",
+                          }}
+                          onError={(e) => {
+                            console.error(
+                              "Failed to load Firebase image:",
+                              imageSrc
+                            );
+                            e.currentTarget.src = "/images/placeholder.png";
+                          }}
+                        />
+                      ) : (
+                        <Image
+                          src={imageSrc}
+                          alt="products-details"
+                          width={400}
+                          height={400}
+                          priority={true}
+                          unoptimized
+                        />
+                      )
                     ) : null}
                   </div>
                 </div>
@@ -176,169 +315,168 @@ const QuickViewModal = () => {
             </div>
 
             <div className="max-w-[445px] w-full">
-              {/* Show condition badge instead of sale badge */}
-              {product.condition && (
-                <span className="inline-block text-custom-xs font-medium text-white py-1 px-3 bg-blue mb-6.5">
-                  {product.condition.toUpperCase()}
-                </span>
-              )}
-
-              <h3 className="font-semibold text-xl xl:text-heading-5 text-dark mb-4">
-                {product.title}
-              </h3>
-
-              <div className="flex flex-wrap items-center gap-5 mb-6">
-                {/* Show posting date instead of reviews */}
-                <div className="flex items-center gap-2">
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 18 18"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M14.25 2.25H3.75C2.92157 2.25 2.25 2.92157 2.25 3.75V14.25C2.25 15.0784 2.92157 15.75 3.75 15.75H14.25C15.0784 15.75 15.75 15.0784 15.75 14.25V3.75C15.75 2.92157 15.0784 2.25 14.25 2.25Z"
-                      stroke="#6B7280"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M12 1.5V3"
-                      stroke="#6B7280"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M6 1.5V3"
-                      stroke="#6B7280"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M2.25 6.75H15.75"
-                      stroke="#6B7280"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span className="text-gray-600">
-                    Posted:{" "}
-                    {product.createdAt
-                      ? new Date(product.createdAt).toLocaleDateString("vi-VN")
-                      : "Unknown"}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <g clipPath="url(#clip0_375_9221)">
-                      <path
-                        d="M10 0.5625C4.78125 0.5625 0.5625 4.78125 0.5625 10C0.5625 15.2188 4.78125 19.4688 10 19.4688C15.2188 19.4688 19.4688 15.2188 19.4688 10C19.4688 4.78125 15.2188 0.5625 10 0.5625ZM10 18.0625C5.5625 18.0625 1.96875 14.4375 1.96875 10C1.96875 5.5625 5.5625 1.96875 10 1.96875C14.4375 1.96875 18.0625 5.59375 18.0625 10.0312C18.0625 14.4375 14.4375 18.0625 10 18.0625Z"
-                        fill="#22AD5C"
-                      />
-                      <path
-                        d="M12.6875 7.09374L8.9688 10.7187L7.2813 9.06249C7.00005 8.78124 6.56255 8.81249 6.2813 9.06249C6.00005 9.34374 6.0313 9.78124 6.2813 10.0625L8.2813 12C8.4688 12.1875 8.7188 12.2812 8.9688 12.2812C9.2188 12.2812 9.4688 12.1875 9.6563 12L13.6875 8.12499C13.9688 7.84374 13.9688 7.40624 13.6875 7.12499C13.4063 6.84374 12.9688 6.84374 12.6875 7.09374Z"
-                        fill="#22AD5C"
-                      />
-                    </g>
-                    <defs>
-                      <clipPath id="clip0_375_9221">
-                        <rect width="20" height="20" fill="white" />
-                      </clipPath>
-                    </defs>
-                  </svg>
-
-                  <span className="font-medium text-dark">
-                    {product.condition === "New"
-                      ? "Brand New"
-                      : product.condition === "Like New"
-                        ? "Like New"
-                        : product.condition === "Good"
-                          ? "Good Condition"
-                          : product.condition === "Fair"
-                            ? "Fair Condition"
-                            : "Available"}
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-gray-600">
-                {product.description || "No description available."}
-              </p>
-
-              {/* Show category information */}
-              {product.category && (
-                <div className="mt-4 mb-4">
-                  <span className="text-sm text-gray-500">Category: </span>
-                  <span className="text-sm font-medium text-blue">
-                    {product.category}
-                  </span>
+              {/* Loading State */}
+              {isLoadingProduct && (
+                <div className="flex items-center justify-center py-10">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue"></div>
                 </div>
               )}
 
-              <div className="mt-6 mb-7.5">
-                <div>
-                  <h4 className="font-semibold text-lg text-dark mb-3.5">
-                    Price
-                  </h4>
+              {/* Error State */}
+              {fetchError && !isLoadingProduct && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                  <p className="font-medium">Error loading product details</p>
+                  <p className="text-sm">{fetchError}</p>
+                </div>
+              )}
 
-                  <span className="flex items-center gap-2">
-                    <span className="font-semibold text-dark text-xl xl:text-heading-4">
-                      {product.price?.toLocaleString("vi-VN")} VND
+              {/* Product Details - Only show when not loading */}
+              {!isLoadingProduct && (
+                <>
+                  {/* Show condition badge instead of sale badge */}
+                  {product.condition && (
+                    <span className="inline-block text-custom-xs font-medium text-white py-1 px-3 bg-blue mb-6.5">
+                      {product.condition.toUpperCase()}
                     </span>
-                    {product.discountedPrice &&
-                      product.discountedPrice !== product.price && (
-                        <span className="font-medium text-dark-4 text-lg xl:text-2xl line-through">
-                          {product.discountedPrice?.toLocaleString("vi-VN")} VND
-                        </span>
-                      )}
-                  </span>
-                </div>
-              </div>
+                  )}
 
-              <div className="flex flex-wrap items-center gap-4">
-                <button
-                  onClick={handleContactSeller}
-                  disabled={!product || !product.id}
-                  className={`inline-flex font-medium text-white py-3 px-7 rounded-md ease-out duration-200 ${
-                    !product || !product.id
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-blue hover:bg-blue-dark"
-                  }`}
-                >
-                  Contact Seller
-                </button>
+                  <h3 className="font-semibold text-xl xl:text-heading-5 text-dark mb-4">
+                    {product.title}
+                  </h3>
 
-                <button className="inline-flex items-center gap-2 font-medium text-white bg-dark py-3 px-6 rounded-md ease-out duration-200 hover:bg-opacity-95">
-                  <svg
-                    className="fill-current"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      clipRule="evenodd"
-                      d="M4.68698 3.68688C3.30449 4.31882 2.29169 5.82191 2.29169 7.6143C2.29169 9.44546 3.04103 10.8569 4.11526 12.0665C5.00062 13.0635 6.07238 13.8897 7.11763 14.6956C7.36588 14.8869 7.61265 15.0772 7.85506 15.2683C8.29342 15.6139 8.68445 15.9172 9.06136 16.1374C9.43847 16.3578 9.74202 16.4584 10 16.4584C10.258 16.4584 10.5616 16.3578 10.9387 16.1374C11.3156 15.9172 11.7066 15.6139 12.145 15.2683C12.3874 15.0772 12.6342 14.8869 12.8824 14.6956C13.9277 13.8897 14.9994 13.0635 15.8848 12.0665C16.959 10.8569 17.7084 9.44546 17.7084 7.6143C17.7084 5.82191 16.6955 4.31882 15.3131 3.68688C13.97 3.07295 12.1653 3.23553 10.4503 5.01733C10.3325 5.13974 10.1699 5.20891 10 5.20891C9.83012 5.20891 9.66754 5.13974 9.54972 5.01733C7.83474 3.23553 6.03008 3.07295 4.68698 3.68688ZM10 3.71573C8.07331 1.99192 5.91582 1.75077 4.16732 2.55002C2.32061 3.39415 1.04169 5.35424 1.04169 7.6143C1.04169 9.83557 1.9671 11.5301 3.18062 12.8966C4.15241 13.9908 5.34187 14.9067 6.39237 15.7155C6.63051 15.8989 6.8615 16.0767 7.0812 16.2499C7.50807 16.5864 7.96631 16.9453 8.43071 17.2166C8.8949 17.4879 9.42469 17.7084 10 17.7084C10.5754 17.7084 11.1051 17.4879 11.5693 17.2166C12.0337 16.9453 12.492 16.5864 12.9188 16.2499C13.1385 16.0767 13.3695 15.8989 13.6077 15.7155C14.6582 14.9067 15.8476 13.9908 16.8194 12.8966C18.0329 11.5301 18.9584 9.83557 18.9584 7.6143C18.9584 5.35424 17.6794 3.39415 15.8327 2.55002C14.0842 1.75077 11.9267 1.99192 10 3.71573Z"
-                      fill=""
-                    />
-                  </svg>
-                  Save Post
-                </button>
-              </div>
+                  <div className="flex flex-wrap items-center gap-5 mb-6">
+                    {/* Show posting date instead of reviews */}
+                    <div className="flex items-center gap-2">
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 18 18"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M14.25 2.25H3.75C2.92157 2.25 2.25 2.92157 2.25 3.75V14.25C2.25 15.0784 2.92157 15.75 3.75 15.75H14.25C15.0784 15.75 15.75 15.0784 15.75 14.25V3.75C15.75 2.92157 15.0784 2.25 14.25 2.25Z"
+                          stroke="#6B7280"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M12 1.5V3"
+                          stroke="#6B7280"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M6 1.5V3"
+                          stroke="#6B7280"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M2.25 6.75H15.75"
+                          stroke="#6B7280"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span className="text-gray-600">
+                        Posted:{" "}
+                        {product.createdAt
+                          ? new Date(product.createdAt).toLocaleDateString(
+                              "en-US",
+                              {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              }
+                            )
+                          : "Unknown"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <g clipPath="url(#clip0_375_9221)">
+                          <path
+                            d="M10 0.5625C4.78125 0.5625 0.5625 4.78125 0.5625 10C0.5625 15.2188 4.78125 19.4688 10 19.4688C15.2188 19.4688 19.4688 15.2188 19.4688 10C19.4688 4.78125 15.2188 0.5625 10 0.5625ZM10 18.0625C5.5625 18.0625 1.96875 14.4375 1.96875 10C1.96875 5.5625 5.5625 1.96875 10 1.96875C14.4375 1.96875 18.0625 5.59375 18.0625 10.0312C18.0625 14.4375 14.4375 18.0625 10 18.0625Z"
+                            fill="#22AD5C"
+                          />
+                          <path
+                            d="M12.6875 7.09374L8.9688 10.7187L7.2813 9.06249C7.00005 8.78124 6.56255 8.81249 6.2813 9.06249C6.00005 9.34374 6.0313 9.78124 6.2813 10.0625L8.2813 12C8.4688 12.1875 8.7188 12.2812 8.9688 12.2812C9.2188 12.2812 9.4688 12.1875 9.6563 12L13.6875 8.12499C13.9688 7.84374 13.9688 7.40624 13.6875 7.12499C13.4063 6.84374 12.9688 6.84374 12.6875 7.09374Z"
+                            fill="#22AD5C"
+                          />
+                        </g>
+                        <defs>
+                          <clipPath id="clip0_375_9221">
+                            <rect width="20" height="20" fill="white" />
+                          </clipPath>
+                        </defs>
+                      </svg>
+
+                      <span className="font-medium text-dark">Available</span>
+                    </div>
+                  </div>
+
+                  <p className="text-gray-600">
+                    {product.description || "No description available."}
+                  </p>
+
+                  <div className="mt-6 mb-7.5">
+                    <div>
+                      <h4 className="font-semibold text-lg text-dark mb-3.5">
+                        Price
+                      </h4>
+
+                      <span className="font-semibold text-dark text-xl xl:text-heading-4">
+                        {product.price?.toLocaleString("vi-VN")} VND
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4">
+                    <button
+                      onClick={handleContactSeller}
+                      disabled={!product || !product.id || isLoadingProduct}
+                      className={`inline-flex font-medium text-white py-3 px-7 rounded-md ease-out duration-200 ${
+                        !product || !product.id || isLoadingProduct
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-blue hover:bg-blue-dark"
+                      }`}
+                    >
+                      Contact Seller
+                    </button>
+
+                    <button className="inline-flex items-center gap-2 font-medium text-white bg-dark py-3 px-6 rounded-md ease-out duration-200 hover:bg-opacity-95">
+                      <svg
+                        className="fill-current"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          clipRule="evenodd"
+                          d="M4.68698 3.68688C3.30449 4.31882 2.29169 5.82191 2.29169 7.6143C2.29169 9.44546 3.04103 10.8569 4.11526 12.0665C5.00062 13.0635 6.07238 13.8897 7.11763 14.6956C7.36588 14.8869 7.61265 15.0772 7.85506 15.2683C8.29342 15.6139 8.68445 15.9172 9.06136 16.1374C9.43847 16.3578 9.74202 16.4584 10 16.4584C10.258 16.4584 10.5616 16.3578 10.9387 16.1374C11.3156 15.9172 11.7066 15.6139 12.145 15.2683C12.3874 15.0772 12.6342 14.8869 12.8824 14.6956C13.9277 13.8897 14.9994 13.0635 15.8848 12.0665C16.959 10.8569 17.7084 9.44546 17.7084 7.6143C17.7084 5.82191 16.6955 4.31882 15.3131 3.68688C13.97 3.07295 12.1653 3.23553 10.4503 5.01733C10.3325 5.13974 10.1699 5.20891 10 5.20891C9.83012 5.20891 9.66754 5.13974 9.54972 5.01733C7.83474 3.23553 6.03008 3.07295 4.68698 3.68688ZM10 3.71573C8.07331 1.99192 5.91582 1.75077 4.16732 2.55002C2.32061 3.39415 1.04169 5.35424 1.04169 7.6143C1.04169 9.83557 1.9671 11.5301 3.18062 12.8966C4.15241 13.9908 5.34187 14.9067 6.39237 15.7155C6.63051 15.8989 6.8615 16.0767 7.0812 16.2499C7.50807 16.5864 7.96631 16.9453 8.43071 17.2166C8.8949 17.4879 9.42469 17.7084 10 17.7084C10.5754 17.7084 11.1051 17.4879 11.5693 17.2166C12.0337 16.9453 12.492 16.5864 12.9188 16.2499C13.1385 16.0767 13.3695 15.8989 13.6077 15.7155C14.6582 14.9067 15.8476 13.9908 16.8194 12.8966C18.0329 11.5301 18.9584 9.83557 18.9584 7.6143C18.9584 5.35424 17.6794 3.39415 15.8327 2.55002C14.0842 1.75077 11.9267 1.99192 10 3.71573Z"
+                          fill=""
+                        />
+                      </svg>
+                      Save Post
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

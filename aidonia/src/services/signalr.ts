@@ -223,26 +223,50 @@ class ChatSignalRService {
       !this.connection ||
       this.connection.state !== signalR.HubConnectionState.Connected
     ) {
-      console.error("❌ SignalR not connected, cannot join conversation");
-      await this.start();
-      // Wait a bit for connection to establish
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.warn("⚠️ SignalR not connected, attempting to connect...");
+      try {
+        await this.start();
+        // Wait for connection to establish with retries
+        let retries = 0;
+        const maxRetries = 5;
+        while (
+          this.connection?.state !== signalR.HubConnectionState.Connected &&
+          retries < maxRetries
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          retries++;
+        }
+
+        if (this.connection?.state !== signalR.HubConnectionState.Connected) {
+          console.error(
+            "❌ Failed to establish SignalR connection after retries"
+          );
+          return false;
+        }
+      } catch (error) {
+        console.error("❌ Error starting SignalR connection:", error);
+        return false;
+      }
     }
 
     try {
       this.currentUserId = userId;
       const groupName = `Conversation_${conversationId}`;
 
-      console.log(`🔗 Joining conversation group: ${groupName}`);
+      console.log(
+        `🔗 Joining conversation group: ${groupName} for user: ${userId}`
+      );
 
       // Call the JoinConversation method on the hub
+      // Backend expects: JoinConversation(string conversationId, string userId)
       await this.connection!.invoke(
         "JoinConversation",
-        conversationId.toString()
+        conversationId.toString(),
+        userId.toString()
       );
 
       this.joinedConversations.add(conversationId);
-      console.log(`✅ Joined conversation ${conversationId}`);
+      console.log(`✅ Joined conversation ${conversationId} as user ${userId}`);
 
       return true;
     } catch (error) {
@@ -262,19 +286,29 @@ class ChatSignalRService {
       return false;
     }
 
+    if (!this.currentUserId) {
+      console.warn("⚠️ No userId available, cannot leave conversation");
+      return false;
+    }
+
     try {
       const groupName = `Conversation_${conversationId}`;
+      const userId = this.currentUserId;
 
-      console.log(`👋 Leaving conversation group: ${groupName}`);
+      console.log(
+        `👋 Leaving conversation group: ${groupName} for user: ${userId}`
+      );
 
       // Call the LeaveConversation method on the hub
+      // Backend expects: LeaveConversation(string conversationId, string userId)
       await this.connection.invoke(
         "LeaveConversation",
-        conversationId.toString()
+        conversationId.toString(),
+        userId.toString()
       );
 
       this.joinedConversations.delete(conversationId);
-      console.log(`✅ Left conversation ${conversationId}`);
+      console.log(`✅ Left conversation ${conversationId} as user ${userId}`);
 
       return true;
     } catch (error) {

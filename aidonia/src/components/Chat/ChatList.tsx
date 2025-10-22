@@ -29,7 +29,54 @@ export default function ChatList() {
         const result = await chatService.getConversationsWithPreview(user.id);
 
         if (result.isSuccess && result.data) {
-          setConversations(result.data);
+          console.log("📦 Raw conversations from API:", result.data);
+
+          // Deduplicate conversations based on unique combination of postId + participant IDs
+          // This handles cases where backend returns duplicates with swapped buyer/seller
+          const uniqueConversations = result.data.reduce(
+            (acc, conversation) => {
+              // Create a normalized key that's the same regardless of buyer/seller order
+              // Sort the IDs so that key is consistent: postId-smallerId-largerId
+              const ids = [conversation.buyerId, conversation.sellerId].sort(
+                (a, b) => a - b
+              );
+              const key = `${conversation.postId}-${ids[0]}-${ids[1]}`;
+
+              // Keep only the first occurrence of each unique conversation
+              if (!acc.has(key)) {
+                acc.set(key, conversation);
+                console.log("✅ Keeping conversation:", {
+                  id: conversation.id,
+                  postId: conversation.postId,
+                  buyerId: conversation.buyerId,
+                  sellerId: conversation.sellerId,
+                  key,
+                });
+              } else {
+                console.warn(
+                  "⚠️ Duplicate conversation detected and removed:",
+                  {
+                    duplicateId: conversation.id,
+                    keptId: acc.get(key)?.id,
+                    postId: conversation.postId,
+                    buyerId: conversation.buyerId,
+                    sellerId: conversation.sellerId,
+                    key,
+                  }
+                );
+              }
+              return acc;
+            },
+            new Map<string, ConversationWithPreview>()
+          );
+
+          const deduplicatedConversations = Array.from(
+            uniqueConversations.values()
+          );
+          console.log(
+            `✅ Loaded ${result.data.length} conversations, deduplicated to ${deduplicatedConversations.length}`
+          );
+          setConversations(deduplicatedConversations);
         } else {
           setError("Failed to load conversations");
         }
@@ -156,10 +203,12 @@ export default function ChatList() {
             const otherParticipant = getOtherParticipant(conversation);
             const lastMessage = conversation.lastMessage;
             const hasUnread = (conversation.unreadCount || 0) > 0;
+            // Use combination of conversation details for truly unique key
+            const conversationKey = `conv-${conversation.id}-${conversation.postId}-${conversation.buyerId}-${conversation.sellerId}`;
 
             return (
               <div
-                key={conversation.id}
+                key={conversationKey}
                 onClick={() => handleSelectConversation(conversation)}
                 className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
                   hasUnread ? "bg-blue-50" : ""
@@ -229,15 +278,17 @@ export default function ChatList() {
                   </div>
 
                   {/* Unread indicator */}
-                  {hasUnread && (
-                    <div className="ml-2 flex-shrink-0">
-                      <div className="w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">
-                          {conversation.unreadCount}
-                        </span>
+                  {hasUnread &&
+                    conversation.unreadCount &&
+                    conversation.unreadCount > 0 && (
+                      <div className="ml-2 flex-shrink-0">
+                        <div className="min-w-[20px] h-5 bg-blue-500 rounded-full flex items-center justify-center px-2">
+                          <span className="text-white text-xs font-bold">
+                            {conversation.unreadCount}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               </div>
             );
