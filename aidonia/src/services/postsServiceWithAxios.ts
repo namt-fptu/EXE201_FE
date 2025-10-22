@@ -81,6 +81,22 @@ export const postsService = {
       return response.data;
     } catch (error: any) {
       console.error("Error fetching paged posts:", error);
+
+      // If it's a "no posts found" error, return empty result instead of throwing
+      if (error.response?.data?.message?.includes("No posts found")) {
+        return {
+          isSuccess: true,
+          data: {
+            items: [],
+            pageNumber: page,
+            pageSize: limit,
+            totalPages: 0,
+          },
+          message: "No posts found for the given criteria",
+          exception: null,
+        };
+      }
+
       throw new Error(
         error.response?.data?.message || "Failed to fetch posts."
       );

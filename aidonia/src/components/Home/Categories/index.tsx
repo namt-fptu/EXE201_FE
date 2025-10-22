@@ -1,14 +1,15 @@
 "use client";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { useCallback, useRef, useEffect } from "react";
-import data from "./categoryData";
-import Image from "next/image";
+import { useCallback, useRef, useEffect, useState } from "react";
+import api from "@/services/axios";
+import Link from "next/link";
 
 // Import Swiper styles
-import SingleItem from "./SingleItem";
 
 const Categories = () => {
   const sliderRef = useRef(null);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const handlePrev = useCallback(() => {
     if (!sliderRef.current) return;
@@ -18,6 +19,36 @@ const Categories = () => {
   const handleNext = useCallback(() => {
     if (!sliderRef.current) return;
     sliderRef.current.swiper.slideNext();
+  }, []);
+
+  // Load categories from API
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get("categories");
+        console.log("Categories response:", response.data);
+
+        if (response.data) {
+          const categoryData = response.data.data || response.data;
+
+          if (Array.isArray(categoryData)) {
+            setCategories(categoryData);
+            console.log("Categories loaded successfully:", categoryData);
+          } else {
+            console.error("Categories data is not an array:", categoryData);
+            setCategories([]);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading categories:", error);
+        setCategories([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCategories();
   }, []);
 
   useEffect(() => {
@@ -132,11 +163,40 @@ const Categories = () => {
               },
             }}
           >
-            {data.map((item, key) => (
-              <SwiperSlide key={key}>
-                <SingleItem item={item} />
-              </SwiperSlide>
-            ))}
+            {loading ? (
+              // Loading skeleton
+              Array.from({ length: 6 }).map((_, key) => (
+                <SwiperSlide key={key}>
+                  <div className="group flex flex-col items-center">
+                    <div className="max-w-[130px] w-full bg-gray-2 h-32.5 rounded-full flex items-center justify-center mb-4 animate-pulse"></div>
+                    <div className="h-4 bg-gray-2 rounded w-20 animate-pulse"></div>
+                  </div>
+                </SwiperSlide>
+              ))
+            ) : categories.length > 0 ? (
+              categories.map((category, key) => (
+                <SwiperSlide key={category.id || key}>
+                  <Link
+                    href={`/shop-with-sidebar?category=${category.id}`}
+                    className="group flex flex-col items-center"
+                  >
+                    <div className="max-w-[130px] w-full bg-[#F2F3F8] h-32.5 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-50 transition-colors">
+                      <span className="text-4xl">{category.icon || "📦"}</span>
+                    </div>
+
+                    <div className="flex justify-center">
+                      <h3 className="inline-block font-medium text-center text-dark bg-gradient-to-r from-blue to-blue bg-[length:0px_1px] bg-left-bottom bg-no-repeat transition-[background-size] duration-500 hover:bg-[length:100%_3px] group-hover:bg-[length:100%_1px] group-hover:text-blue">
+                        {category.name || category.categoryName}
+                      </h3>
+                    </div>
+                  </Link>
+                </SwiperSlide>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-10 text-gray-500">
+                No categories available
+              </div>
+            )}
           </Swiper>
         </div>
       </div>
