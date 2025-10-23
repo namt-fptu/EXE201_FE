@@ -75,6 +75,38 @@ export const dashboardService = {
     }
   },
 
+  getTotalPayments: async (): Promise<{ isSuccess: boolean; data: number; message: string }> => {
+    try {
+      const response = await api.get<{ isSuccess: boolean; data: number; message: string }>(
+        '/statistical/total-payments'
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching total payments:', error);
+      return {
+        isSuccess: false,
+        data: 0,
+        message: 'Failed to fetch total payments'
+      };
+    }
+  },
+
+  getTotalRevenue: async (): Promise<{ isSuccess: boolean; data: number; message: string }> => {
+    try {
+      const response = await api.get<{ isSuccess: boolean; data: number; message: string }>(
+        '/statistical/total-revenue'
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching total revenue:', error);
+      return {
+        isSuccess: false,
+        data: 0,
+        message: 'Failed to fetch total revenue'
+      };
+    }
+  },
+
   getStats: async (): Promise<DashboardResponse> => {
     try {
       const response = await api.get<DashboardResponse>('/dashboard/stats');

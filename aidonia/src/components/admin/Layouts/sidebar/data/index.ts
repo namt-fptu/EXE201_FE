@@ -17,10 +17,6 @@ export const NAV_DATA = [
             url: "/admin/analytics",
           },
           {
-            title: "Charts",
-            url: "/admin/charts/basic-chart",
-          },
-          {
             title: "Reports",
             url: "/admin/reports",
           },
