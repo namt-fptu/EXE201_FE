@@ -470,14 +470,30 @@ export default function ChatWindow({
 
   // Format message time
   const formatMessageTime = (dateString: string) => {
-    const date = new Date(dateString);
+    // Ensure proper date parsing - append 'Z' if no timezone info to force UTC interpretation
+    const normalizedDateString =
+      dateString.includes("Z") ||
+      dateString.includes("+") ||
+      dateString.includes("-")
+        ? dateString
+        : `${dateString}Z`;
+
+    const date = new Date(normalizedDateString);
     const now = new Date();
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.error("Invalid date string:", dateString);
+      return "Invalid time";
+    }
+
     const isToday = date.toDateString() === now.toDateString();
 
     if (isToday) {
       return date.toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
+        hour12: true,
       });
     } else {
       return date.toLocaleDateString([], { month: "short", day: "numeric" });
