@@ -4,9 +4,20 @@ import React, { useState, useEffect, useRef } from "react";
 import { Message, Conversation } from "@/services/chat";
 import chatService from "@/services/chat";
 import chatSignalRService from "@/services/signalr";
+import dealService, { Deal } from "@/services/deals";
 import useUserStore from "@/redux/userStore";
 import { getUserIdAsNumber, getIdAsNumber } from "@/utils/id-helpers";
-import { X, Send, Phone, Video, MoreVertical } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  X,
+  Send,
+  Phone,
+  Video,
+  MoreVertical,
+  ShoppingCart,
+  ExternalLink,
+} from "lucide-react";
+import { toast } from "sonner";
 
 interface ChatWindowProps {
   conversation?: Conversation;
@@ -26,6 +37,7 @@ export default function ChatWindow({
   className = "",
 }: ChatWindowProps) {
   const { user } = useUserStore();
+  const router = useRouter();
   const [conversation, setConversation] = useState<Conversation | null>(
     initialConversation || null
   );
@@ -34,6 +46,8 @@ export default function ChatWindow({
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
+  const [deal, setDeal] = useState<Deal | null>(null);
+  const [isCreatingDeal, setIsCreatingDeal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -468,6 +482,123 @@ export default function ChatWindow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation?.id]);
 
+  // Fetch deal when conversation is loaded
+  useEffect(() => {
+    const fetchDeal = async () => {
+      if (!conversation || !user?.id) return;
+
+      try {
+        const result = await dealService.getDealByConversation(
+          conversation.postId,
+          conversation.buyerId,
+          conversation.sellerId
+        );
+
+        if (result.isSuccess && result.data) {
+          setDeal(result.data);
+          console.log("✅ Deal found:", result.data);
+        }
+      } catch (error) {
+        console.error("Error fetching deal:", error);
+      }
+    };
+
+    fetchDeal();
+  }, [conversation, user?.id]);
+
+  // Handle Create Deal button click
+  const handleCreateOrder = async () => {
+    if (!conversation || !user?.id || isCreatingDeal) return;
+
+    const currentUserId = getUserIdAsNumber(user.id);
+
+    // Only buyer can create Deal
+    if (currentUserId !== conversation.buyerId) {
+      toast.error("Only the buyer can create a Deal");
+      return;
+    }
+
+    // Check if deal already exists for this post and buyer
+    if (deal) {
+      toast.info("A deal already exists for this post");
+      return;
+    }
+
+    // Check if user has verified phone
+    try {
+      setIsCreatingDeal(true);
+
+      // You may need to get buyer's address - for now using a placeholder
+      // You might want to show a modal to select address first
+      const buyerAddressId = 1; // TODO: Let user select their address
+
+      const dealData = {
+        postId: conversation.postId,
+        sellerId: conversation.sellerId,
+        buyerId: conversation.buyerId,
+        buyerAddressId: buyerAddressId,
+      };
+
+      const result = await dealService.createDeal(dealData);
+
+      if (result.isSuccess && result.data) {
+        toast.success("Deal created successfully!");
+
+        // Fetch the newly created deal to get complete data
+        const dealResult = await dealService.getDealByConversation(
+          conversation.postId,
+          conversation.buyerId,
+          conversation.sellerId
+        );
+
+        if (dealResult.isSuccess && dealResult.data) {
+          setDeal(dealResult.data);
+          console.log("✅ Deal fetched after creation:", dealResult.data);
+
+          // Send notification message to seller with actual deal ID
+          await chatService.sendMessage({
+            conversationId: conversation.id,
+            senderId: currentUserId,
+            messageText: `🛒 Deal created! Deal ID: ${dealResult.data.id}`,
+          });
+        } else {
+          // Fallback: just update UI even if we can't fetch the deal
+          setDeal({ id: 0 } as Deal); // Minimal deal object to trigger UI update
+
+          await chatService.sendMessage({
+            conversationId: conversation.id,
+            senderId: currentUserId,
+            messageText: `🛒 Deal created!`,
+          });
+        }
+      } else {
+        // Backend returned an error (400 Bad Request with validation message)
+        // Simply show the error message from backend, don't make additional API calls
+        toast.error(result.message || "Failed to create Deal");
+      }
+    } catch (error) {
+      console.error("Error creating Deal:", error);
+      let errorMessage = "Failed to create Deal";
+      if (error && typeof error === "object") {
+        const err = error as {
+          response?: { data?: { message?: string } };
+          message?: string;
+        };
+        errorMessage =
+          err.response?.data?.message || err.message || errorMessage;
+      }
+      toast.error(errorMessage);
+    } finally {
+      setIsCreatingDeal(false);
+    }
+  };
+
+  // Navigate to Deal tab in My Account
+  const handleViewDeal = () => {
+    router.push("/my-account?tab=deal");
+    onClose(); // Close chat window
+  };
+
   // Format message time
   const formatMessageTime = (dateString: string) => {
     // Ensure proper date parsing - append 'Z' if no timezone info to force UTC interpretation
@@ -591,7 +722,7 @@ export default function ChatWindow({
                 key={messageKey}
                 className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
               >
-                <div className={`max-w-[70%] ${isOwn ? "order-2" : "order-1"}`}>
+                <div className={`max-w-[70%] ${isOwn ? "Deal-2" : "Deal-1"}`}>
                   <div
                     className={`px-4 py-2 rounded-2xl ${
                       isOwn
@@ -630,6 +761,56 @@ export default function ChatWindow({
 
       {/* Message Input */}
       <div className="p-4 border-t bg-gray-50 rounded-b-lg">
+        {/* Deal Status Display */}
+        {conversation && user?.id && (
+          <div className="mb-3">
+            {getUserIdAsNumber(user.id) === conversation.buyerId && (
+              <>
+                {!deal ? (
+                  // Show "Create Deal" button only if no deal exists
+                  <button
+                    type="button"
+                    onClick={handleCreateOrder}
+                    disabled={isCreatingDeal}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue text-white rounded-lg hover:bg-blue/90 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                    title="Create Deal"
+                  >
+                    <ShoppingCart size={18} />
+                    {isCreatingDeal ? "Creating Deal..." : "Create Deal"}
+                  </button>
+                ) : (
+                  // Show "View Deal" button if deal already exists
+                  <button
+                    type="button"
+                    onClick={handleViewDeal}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue text-white rounded-lg hover:bg-blue/90 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors shadow-sm"
+                    title="View Deal in My Account"
+                  >
+                    <ExternalLink size={18} />
+                    View Deal in My Account
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* Show deal status for both buyer and seller when deal exists */}
+            {deal && getUserIdAsNumber(user.id) === conversation.sellerId && (
+              <div className="space-y-2">
+                <div className="text-sm text-center py-2 px-4 bg-blue/10 rounded-lg">
+                  <span className="text-gray-700">Deal Status: </span>
+                  <span className="font-semibold text-blue">{deal.status}</span>
+                </div>
+                <div className="text-xs text-center text-gray-600">
+                  Manage this deal in{" "}
+                  <span className="font-medium text-blue">
+                    My Account → Deals
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-end space-x-2">
           <div className="flex-1">
             <textarea

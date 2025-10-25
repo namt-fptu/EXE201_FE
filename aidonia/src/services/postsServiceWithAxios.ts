@@ -148,4 +148,19 @@ export const postsService = {
       throw new Error(error.response?.data?.message || "Failed to fetch post.");
     }
   },
+
+  // Get posts by highest package price
+  getByHighestPackage: async (count: number = 3): Promise<PostsResponse> => {
+    try {
+      const response = await api.get<PostsResponse>(
+        `/posts/highest-package?count=${count}`
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error fetching posts by highest package:`, error);
+      throw new Error(
+        error.response?.data?.message || "Failed to fetch posts."
+      );
+    }
+  },
 };
