@@ -123,8 +123,23 @@ export default function ChatList() {
 
   // Format message time
   const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
+    // Ensure proper date parsing - append 'Z' if no timezone info to force UTC interpretation
+    const normalizedDateString =
+      dateString.includes("Z") ||
+      dateString.includes("+") ||
+      dateString.includes("-")
+        ? dateString
+        : `${dateString}Z`;
+
+    const date = new Date(normalizedDateString);
     const now = new Date();
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.error("Invalid date string:", dateString);
+      return "Invalid time";
+    }
+
     const diffInMinutes = Math.floor(
       (now.getTime() - date.getTime()) / (1000 * 60)
     );

@@ -5,12 +5,12 @@ const nextConfig: NextConfig = {
   experimental: {
     // Optimize CSS handling
     optimizeCss: true,
-    // Turbopack for faster development (already in package.json)
-    turbo: {
-      rules: {
-        // Custom Turbopack rules can be added here
-      },
-    },
+  },
+
+  // ✅ TURBOPACK: Modern bundler configuration (replaces experimental.turbo)
+  turbopack: {
+    // Set the workspace root to avoid warnings
+    root: process.cwd(),
   },
 
   // ✅ COMPRESSION: Enable compression for better performance
@@ -34,11 +34,8 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
 
-  // ✅ COMPILER: SWC optimizations
-  swcMinify: true,
-
   // ✅ WEBPACK: Custom webpack optimizations
-  webpack: (config, { dev, isServer }) => {
+  webpack: (config, { dev }) => {
     // Optimize for development
     if (dev) {
       // Faster rebuilds

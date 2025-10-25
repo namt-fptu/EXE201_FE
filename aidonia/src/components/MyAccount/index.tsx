@@ -5,12 +5,11 @@ import Breadcrumb from "../Common/Breadcrumb";
 import Image from "next/image";
 import AddressModal from "./AddressModal";
 import BuyPackageModal from "./BuyPackageModal";
+import DealTab from "./DealTab";
 import useUserStore from "@/redux/userStore";
 import { toast } from "sonner";
 import api from "@/services/axios";
 import { AxiosError } from "axios";
-
-import packageService from "@/services/packageService";
 import { uploadImage } from "@/services/firebaseUtils";
 import {
   handleApiResponse,
@@ -19,8 +18,6 @@ import {
   showSuccessToast,
   showErrorToast,
   showInfoToast,
-  showWarningToast,
-  MultiStepToastHandler,
 } from "@/utils/toast-helper";
 
 interface Post {
@@ -30,9 +27,15 @@ interface Post {
   price?: number;
   condition?: string;
   categoryName?: string;
+  categoryId?: string;
   status: string;
+  priority?: string;
   createdAt: string;
+  updatedAt?: string;
   images?: Array<{ url: string } | string>;
+  postImages?: Array<{ url: string } | string>;
+  authorId?: string;
+  authorName?: string;
 }
 
 interface Address {
@@ -91,44 +94,20 @@ const MyAccount = () => {
   });
   const [editLoading, setEditLoading] = useState(false);
 
-  const { user, isAuthenticated, logout } = useUserStore();
-  const router = useRouter();
-  // ---- Edit Post states (đặt ở TOP của component) ----
-  type PostEditForm = {
-    title: string;
-    description: string;
-    price: number | string;
-    condition: string;
-    categoryId: string;
-    postImages: string[];
-  };
-
-  const [postModalOpen, setPostModalOpen] = useState(false);
-  const [editingPostId, setEditingPostId] = useState<string | null>(null);
-  const [postForm, setPostForm] = useState<PostEditForm>({
+  // Post editing states
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [editPostModal, setEditPostModal] = useState(false);
+  const [editPostForm, setEditPostForm] = useState({
     title: "",
     description: "",
-    price: "",
+    price: 0,
     condition: "",
     categoryId: "",
-    postImages: [""],
   });
-  const [postSaving, setPostSaving] = useState(false);
+  const [editPostLoading, setEditPostLoading] = useState(false);
 
-  const [noticeOpen, setNoticeOpen] = useState(false);
-  const [noticeText, setNoticeText] = useState("*Please contact Email to edit");
-  const CONDITION_OPTIONS = [
-    "New",
-    "Like New",
-    "Good",
-    "Fair",
-    "Poor",
-  ] as const;
-
-  type Category = { id: number; categoryName: string };
-
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [catLoading, setCatLoading] = useState(false);
+  const { user, isAuthenticated, logout } = useUserStore();
+  const router = useRouter();
 
   // Logout handler
   const handleLogout = () => {
@@ -151,7 +130,7 @@ const MyAccount = () => {
     const loadingToast = showLoadingToast("Loading your profile...");
 
     try {
-      const response = await api.get(`/users/${user.id}`);
+      const response = await api.get(`users/${user.id}`);
       console.log("User profile response:", response.data);
 
       // Dismiss loading toast
@@ -197,9 +176,7 @@ const MyAccount = () => {
     setPackagesLoading(true);
     try {
       // First get the user's active packages
-      const response = await api.get(
-        `/user_packages/package/active/${user.id}`
-      );
+      const response = await api.get(`user_packages/package/active/${user.id}`);
       console.log("User packages response:", response.data);
       console.log(
         "User packages response structure:",
@@ -274,7 +251,7 @@ const MyAccount = () => {
                 }
 
                 // Get detailed package info from packages/{id} endpoint
-                const detailResponse = await api.get(`/packages/${packageId}`);
+                const detailResponse = await api.get(`packages/${packageId}`);
                 const packageDetails =
                   detailResponse.data?.data || detailResponse.data;
 
@@ -387,7 +364,7 @@ const MyAccount = () => {
 
     setPostsLoading(true);
     try {
-      const response = await api.get(`/posts/user/${user.id}`);
+      const response = await api.get(`posts/user/${user.id}`);
       console.log("User posts response:", response.data);
 
       // Handle different possible response structures
@@ -431,7 +408,7 @@ const MyAccount = () => {
 
     setAddressesLoading(true);
     try {
-      const response = await api.get(`/addresses/users/${user.id}`);
+      const response = await api.get(`addresses/users/${user.id}`);
       console.log("User addresses response:", response.data);
 
       // Handle different possible response structures
@@ -475,7 +452,7 @@ const MyAccount = () => {
 
     setHistoryLoading(true);
     try {
-      const response = await api.get(`/payments/users/${user.id}`);
+      const response = await api.get(`payments/users/${user.id}`);
       console.log("Payment history response:", response.data);
 
       // Handle different possible response structures
@@ -601,7 +578,7 @@ const MyAccount = () => {
 
     try {
       setEditLoading(true);
-      const response = await api.put(`/address/${editingAddress.id}`, editForm);
+      const response = await api.put(`address/${editingAddress.id}`, editForm);
 
       if (response.data.success) {
         showInfoToast("Address updated successfully!");
@@ -627,6 +604,105 @@ const MyAccount = () => {
       showErrorToast(`Failed to update address: ${errorMessage}`);
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  // Post editing functions
+  const openEditPost = (post: Post) => {
+    setEditingPost(post);
+    setEditPostForm({
+      title: post.title || "",
+      description: post.description || "",
+      price: post.price || 0,
+      condition: post.condition || "",
+      categoryId: post.categoryId || "",
+    });
+    setEditPostModal(true);
+  };
+
+  const closeEditPostModal = () => {
+    setEditPostModal(false);
+    setEditingPost(null);
+    setEditPostForm({
+      title: "",
+      description: "",
+      price: 0,
+      condition: "",
+      categoryId: "",
+    });
+  };
+
+  const handleEditPostFormChange = (field: string, value: string | number) => {
+    setEditPostForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const updatePost = async () => {
+    if (!editingPost?.id) return;
+
+    try {
+      setEditPostLoading(true);
+      const loadingToast = showLoadingToast("Updating post...");
+
+      const response = await api.put(`posts/${editingPost.id}`, {
+        title: editPostForm.title,
+        description: editPostForm.description,
+        price: editPostForm.price,
+        condition: editPostForm.condition,
+        categoryId: editPostForm.categoryId,
+      });
+
+      toast.dismiss(loadingToast);
+
+      if (response.data.isSuccess || response.data.success) {
+        showSuccessToast("Post updated successfully!", {
+          description: "Your post has been updated",
+        });
+        // Refresh posts list
+        loadUserPosts();
+        // Close modal
+        closeEditPostModal();
+      } else {
+        throw new Error(response.data.message || "Failed to update post");
+      }
+    } catch (error) {
+      console.error("Error updating post:", error);
+      handleApiError(error, {
+        context: "update post",
+        customMessage: "Failed to update post",
+        showDetails: true,
+      });
+    } finally {
+      setEditPostLoading(false);
+    }
+  };
+
+  const deletePost = async (postId: string) => {
+    if (!confirm("Are you sure you want to delete this post?")) return;
+
+    try {
+      const loadingToast = showLoadingToast("Deleting post...");
+
+      const response = await api.delete(`posts/${postId}`);
+
+      toast.dismiss(loadingToast);
+
+      if (response.data.isSuccess || response.data.success) {
+        showSuccessToast("Post deleted successfully!");
+        // Refresh posts list
+        loadUserPosts();
+      } else {
+        throw new Error(response.data.message || "Failed to delete post");
+      }
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      handleApiError(error, {
+        context: "delete post",
+        customMessage: "Failed to delete post",
+        showDetails: true,
+      });
     }
   };
 
@@ -733,141 +809,6 @@ const MyAccount = () => {
     }
   };
 
-  // load chi tiết 1 post để prefill form
-  const fetchPostDetail = async (id: string) => {
-    const res = await api.get(`/posts/${id}`);
-    return res.data?.data || res.data || {};
-  };
-
-  const openEditPost = async (post: Post) => {
-    const s = (post.status || "").toLowerCase();
-    if (s === "approved" || s === "reject" || s === "rejected") {
-      setNoticeText("*Please contact Email to edit");
-      setNoticeOpen(true);
-      return;
-    }
-    setEditingPostId(post.id);
-
-    // Lấy song song: chi tiết + categories (đều trả về dữ liệu)
-    const [detail, cats] = await Promise.all([
-      fetchPostDetail(post.id),
-      fetchCategories(),
-    ]);
-
-    // Tìm categoryId hiển thị
-    let catId: string = "";
-    if (detail?.categoryId != null) {
-      catId = String(detail.categoryId);
-    } else {
-      const catName = (
-        detail?.categoryName ||
-        post.categoryName ||
-        ""
-      ).toLowerCase();
-      if (catName) {
-        const hit = (cats || []).find(
-          (c) => (c.categoryName || "").toLowerCase() === catName
-        );
-        if (hit) catId = String(hit.id);
-      }
-    }
-
-    setPostForm({
-      title: detail?.title ?? post.title ?? "",
-      description: detail?.description ?? post.description ?? "",
-      price: detail?.price ?? post.price ?? "",
-      condition: detail?.condition ?? post.condition ?? "",
-      categoryId: catId, // ⬅️ đã có id dạng string, select sẽ chọn đúng
-      postImages:
-        Array.isArray(detail?.postImages) && detail.postImages.length
-          ? detail.postImages
-          : [""],
-    });
-
-    setPostModalOpen(true);
-  };
-
-  const updatePost = async () => {
-    if (!editingPostId) return;
-
-    try {
-      setPostSaving(true);
-
-      const payload = {
-        title: postForm.title?.trim() ?? "",
-        description: postForm.description?.trim() ?? "",
-        price: Number(postForm.price) || 0,
-        condition: postForm.condition,
-        categoryId: Number(postForm.categoryId) || 0,
-        postImages: postForm.postImages.filter(Boolean),
-      };
-
-      const res = await api.put(`/posts/${editingPostId}`, payload);
-
-      // ✅ Nếu PUT thành công (status 200 hoặc 204)
-      if (res?.status === 200 || res?.status === 204) {
-        showSuccessToast("Update thành công 🎉", {
-          description: "Bài viết của bạn đã được cập nhật.",
-        });
-      } else {
-        showWarningToast("Đã gửi yêu cầu cập nhật.", {
-          description: "Hệ thống sẽ xử lý thay đổi của bạn.",
-        });
-      }
-
-      // ✅ Đóng modal
-      setPostModalOpen(false);
-      setEditingPostId(null);
-
-      // ✅ Reload lại danh sách bài viết sau khi cập nhật
-      await loadUserPosts();
-    } catch (err) {
-      console.error("Update failed:", err);
-      handleApiError(err, {
-        customMessage: "Cập nhật thất bại, vui lòng thử lại.",
-      });
-    } finally {
-      setPostSaving(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      setCatLoading(true);
-      const res = await api.get("/categories");
-      const items: Category[] = res?.data?.data ?? [];
-      setCategories(items);
-      return items; // ⬅️ trả về để dùng tiếp
-    } catch {
-      showWarningToast("Could not load categories");
-      setCategories([]);
-      return [] as Category[];
-    } finally {
-      setCatLoading(false);
-    }
-  };
-
-  const formatVND = (v: number | string | undefined) =>
-    new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-      maximumFractionDigits: 0,
-    }).format(Number(v) || 0);
-
-  const statusBadge = (s?: string) => {
-    const k = (s || "").toLowerCase();
-    if (k === "approved")
-      return "bg-green-50 text-green-700 ring-1 ring-green-200";
-    if (k === "pending")
-      return "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
-    if (k === "reject" || k === "rejected")
-      return "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
-    return "bg-slate-50 text-slate-600 ring-1 ring-slate-200";
-  };
-
-  const formatDate = (d?: string) =>
-    d ? new Date(d).toLocaleDateString("vi-VN") : "-";
-
   return (
     <>
       <Breadcrumb title={"My Account"} pages={["my account"]} />
@@ -904,7 +845,7 @@ const MyAccount = () => {
                         unoptimized={user.avataImage.includes(
                           "firebasestorage.googleapis.com"
                         )}
-                        onError={(e) => {
+                        onError={() => {
                           console.error(
                             "Failed to load avatar in MyAccount:",
                             user.avataImage
@@ -1033,6 +974,36 @@ const MyAccount = () => {
                         />
                       </svg>
                       Packages
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab("deals")}
+                      className={`flex items-center rounded-md gap-2.5 py-3 px-4.5 ease-out duration-200 hover:bg-blue hover:text-white ${
+                        activeTab === "deals"
+                          ? "text-white bg-blue"
+                          : "text-dark-2 bg-gray-1"
+                      }`}
+                    >
+                      <svg
+                        className="fill-current"
+                        width="22"
+                        height="22"
+                        viewBox="0 0 22 22"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M10.312 7.33333C10.312 6.9536 10.6198 6.64583 10.9995 6.64583C11.3792 6.64583 11.687 6.9536 11.687 7.33333V10.3125H14.6661C15.0458 10.3125 15.3536 10.6203 15.3536 11C15.3536 11.3797 15.0458 11.6875 14.6661 11.6875H11.687V14.6667C11.687 15.0464 11.3792 15.3542 10.9995 15.3542C10.6198 15.3542 10.312 15.0464 10.312 14.6667V11.6875H7.3328C6.9531 11.6875 6.6453 11.3797 6.6453 11C6.6453 10.6203 6.9531 10.3125 7.3328 10.3125H10.312V7.33333Z"
+                          fill=""
+                        />
+                        <path
+                          fillRule="evenodd"
+                          clipRule="evenodd"
+                          d="M10.9995 1.83333C5.93783 1.83333 1.83281 5.93835 1.83281 11C1.83281 16.0617 5.93783 20.1667 10.9995 20.1667C16.0612 20.1667 20.1662 16.0617 20.1662 11C20.1662 5.93835 16.0612 1.83333 10.9995 1.83333ZM3.20781 11C3.20781 6.69774 6.69722 3.20833 10.9995 3.20833C15.3018 3.20833 18.7912 6.69774 18.7912 11C18.7912 15.3023 15.3018 18.7917 10.9995 18.7917C6.69722 18.7917 3.20781 15.3023 3.20781 11Z"
+                          fill=""
+                        />
+                      </svg>
+                      Deals
                     </button>
 
                     <button
@@ -1173,114 +1144,235 @@ const MyAccount = () => {
                   </div>
                 ) : userPosts.length > 0 ? (
                   <div className="space-y-4">
-                    {userPosts.map((post: Post) => (
-                      <div
-                        key={post.id}
-                        className="rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition p-5 md:p-6"
-                      >
-                        {/* Top row: Title + Status + Edit */}
-                        <div className="flex items-start justify-between gap-4">
-                          {/* Left: title + description */}
-                          <div className="min-w-0">
-                            <h4 className="text-slate-900 font-semibold text-base md:text-lg truncate">
-                              {post.title}
-                            </h4>
+                    {userPosts.map((post: Post) => {
+                      const postImages = post.postImages || post.images || [];
 
-                            {post.description && (
-                              <p className="mt-1 text-slate-600 text-sm line-clamp-2">
-                                {post.description}
-                              </p>
+                      return (
+                        <div
+                          key={post.id}
+                          className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-lg text-dark mb-2">
+                                {post.title}
+                              </h4>
+                              <div className="flex flex-wrap gap-2 mb-2">
+                                <span
+                                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                    post.status === "APPROVED"
+                                      ? "bg-green-100 text-green-800"
+                                      : post.status === "PENDING"
+                                        ? "bg-yellow-100 text-yellow-800"
+                                        : "bg-red-100 text-red-800"
+                                  }`}
+                                >
+                                  {post.status}
+                                </span>
+                                {post.condition && (
+                                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {post.condition.replace(/_/g, " ")}
+                                  </span>
+                                )}
+                                {post.priority && (
+                                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    {post.priority}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-2 ml-4">
+                              <button
+                                onClick={() => openEditPost(post)}
+                                className="p-2 text-blue hover:bg-blue-50 rounded-md transition-colors"
+                                title="Edit post"
+                              >
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                  />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => deletePost(post.id)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                title="Delete post"
+                              >
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+
+                          {post.description && (
+                            <p className="text-gray-600 mb-3">
+                              {post.description}
+                            </p>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+                            {post.price !== undefined && (
+                              <div className="flex items-center gap-2">
+                                <svg
+                                  className="w-4 h-4 text-gray-400"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
+                                <span className="font-semibold text-dark">
+                                  {post.price.toLocaleString("vi-VN")} VND
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <svg
+                                className="w-4 h-4 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                                />
+                              </svg>
+                              <span className="text-gray-600">
+                                {post.categoryName || "Uncategorized"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <svg
+                                className="w-4 h-4 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
+                              </svg>
+                              <span className="text-gray-600">
+                                Created:{" "}
+                                {new Date(post.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                            {post.updatedAt && (
+                              <div className="flex items-center gap-2">
+                                <svg
+                                  className="w-4 h-4 text-gray-400"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                  />
+                                </svg>
+                                <span className="text-gray-600">
+                                  Updated:{" "}
+                                  {new Date(
+                                    post.updatedAt
+                                  ).toLocaleDateString()}
+                                </span>
+                              </div>
                             )}
                           </div>
 
-                          {/* Right: status + edit */}
-                          <div className="flex flex-col items-end shrink-0">
-                            <span
-                              className={
-                                "px-2.5 py-1 rounded-full text-xs font-medium " +
-                                statusBadge(post.status)
-                              }
-                            >
-                              {post.status}
-                            </span>
-
-                            <button
-                              onClick={() => openEditPost(post)}
-                              className="mt-2 text-sm text-blue-500 hover:text-blue-600 hover:underline"
-                            >
-                              Edit
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Divider */}
-                        <div className="mt-4 h-px bg-slate-100" />
-
-                        {/* Meta grid: Price | Condition | Category | Created */}
-                        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-slate-500">Price:</span>
-                            <span className="font-medium text-slate-900">
-                              {formatVND(post.price)}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-slate-500">Condition:</span>
-                            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-medium capitalize">
-                              {post.condition || "-"}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-slate-500">Category:</span>
-                            <span className="text-slate-800">
-                              {post.categoryName || "Uncategorized"}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center md:justify-end gap-1.5">
-                            <span className="text-slate-500">Created:</span>
-                            <span className="text-slate-800">
-                              {formatDate(post.createdAt)}
-                            </span>
-                          </div>
-                          {post.images && post.images.length > 0 && (
-                            <div className="flex gap-2 mt-3">
-                              {post.images
-                                .slice(0, 3)
+                          {postImages.length > 0 && (
+                            <div className="flex gap-2 mt-3 overflow-x-auto">
+                              {postImages
+                                .slice(0, 4)
+                                .filter((image: { url: string } | string) => {
+                                  const imageUrl =
+                                    typeof image === "string"
+                                      ? image
+                                      : image.url;
+                                  try {
+                                    return (
+                                      imageUrl &&
+                                      (imageUrl.startsWith("http://") ||
+                                        imageUrl.startsWith("https://") ||
+                                        imageUrl.startsWith("/"))
+                                    );
+                                  } catch {
+                                    return false;
+                                  }
+                                })
                                 .map(
                                   (
                                     image: { url: string } | string,
                                     index: number
-                                  ) => (
-                                    <div
-                                      key={index}
-                                      className="w-16 h-16 relative"
-                                    >
-                                      <Image
-                                        src={
-                                          typeof image === "string"
-                                            ? image
-                                            : image.url
-                                        }
-                                        alt={`Post image ${index + 1}`}
-                                        fill
-                                        className="rounded object-cover"
-                                      />
-                                    </div>
-                                  )
+                                  ) => {
+                                    const imageUrl =
+                                      typeof image === "string"
+                                        ? image
+                                        : image.url;
+
+                                    return (
+                                      <div
+                                        key={index}
+                                        className="w-20 h-20 relative flex-shrink-0"
+                                      >
+                                        <Image
+                                          src={imageUrl}
+                                          alt={`Post image ${index + 1}`}
+                                          fill
+                                          className="rounded object-cover"
+                                          onError={() => {
+                                            console.error(
+                                              "Failed to load post image:",
+                                              imageUrl
+                                            );
+                                          }}
+                                        />
+                                      </div>
+                                    );
+                                  }
                                 )}
-                              {post.images.length > 3 && (
-                                <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-600">
-                                  +{post.images.length - 3}
+                              {postImages.length > 4 && (
+                                <div className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-600 flex-shrink-0">
+                                  +{postImages.length - 4}
                                 </div>
                               )}
                             </div>
                           )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-12">
@@ -1599,6 +1691,19 @@ const MyAccount = () => {
               </div>
             </div>
             {/* <!-- history tab content end -->
+
+          <!-- deals tab content start --> */}
+            <div
+              className={`xl:max-w-[770px] w-full bg-white rounded-xl shadow-1 ${
+                activeTab === "deals" ? "block" : "hidden"
+              }`}
+            >
+              <div className="p-4 sm:p-7.5 xl:p-9">
+                <h3 className="text-xl font-semibold mb-6">My Deals</h3>
+                <DealTab />
+              </div>
+            </div>
+            {/* <!-- deals tab content end -->
 
           <!-- addresses tab content start --> */}
             <div
@@ -1944,199 +2049,6 @@ const MyAccount = () => {
           </div>
         </div>
       </section>
-      {/* ====== Edit Post Modal ====== */}
-      {postModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-2xl mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Edit Post</h3>
-              <button
-                onClick={() => setPostModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <label className="block text-sm mb-1">Title</label>
-                <input
-                  value={postForm.title}
-                  onChange={(e) =>
-                    setPostForm({ ...postForm, title: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-
-                <label className="block text-sm mb-1 mt-3">Description</label>
-                <textarea
-                  value={postForm.description}
-                  onChange={(e) =>
-                    setPostForm({ ...postForm, description: e.target.value })
-                  }
-                  className="w-full h-[140px] px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-
-                <label className="block text-sm mb-1 mt-3">Condition</label>
-                <select
-                  value={postForm.condition || ""}
-                  onChange={(e) =>
-                    setPostForm({ ...postForm, condition: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border rounded-md bg-white focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="" disabled>
-                    Select condition…
-                  </option>
-                  {CONDITION_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-3">
-                <label className="block text-sm mb-1">Price</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={postForm.price}
-                    onChange={(e) =>
-                      setPostForm({ ...postForm, price: e.target.value })
-                    }
-                    className="w-full px-3 py-2 pr-14 border rounded-md focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter amount"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">
-                    VND
-                  </span>
-                </div>
-
-                <label className="block text-sm mb-1">Category</label>
-                <select
-                  value={postForm.categoryId}
-                  onChange={(e) =>
-                    setPostForm({ ...postForm, categoryId: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border rounded-md bg-white focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="" disabled>
-                    {catLoading ? "Loading..." : "Select category…"}
-                  </option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={String(c.id)}>
-                      {" "}
-                      {/* ⬅️ ép về string */}
-                      {c.categoryName}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="mt-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm">Post Images (URLs)</label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPostForm({
-                          ...postForm,
-                          postImages: [...postForm.postImages, ""],
-                        })
-                      }
-                      className="text-sm text-blue-500 hover:text-blue-600 hover:underline"
-                    >
-                      + Add
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    {postForm.postImages.map((url, idx) => (
-                      <div key={idx} className="flex gap-2">
-                        <input
-                          value={url}
-                          onChange={(e) => {
-                            const next = [...postForm.postImages];
-                            next[idx] = e.target.value;
-                            setPostForm({ ...postForm, postImages: next });
-                          }}
-                          className="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                          placeholder="https://..."
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = postForm.postImages.filter(
-                              (_, i) => i !== idx
-                            );
-                            setPostForm({
-                              ...postForm,
-                              postImages: next.length ? next : [""],
-                            });
-                          }}
-                          className="px-2 text-sm text-red-600 hover:underline"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setPostModalOpen(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
-                disabled={postSaving}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={updatePost}
-                className="flex-1 px-4 py-2 bg-blue text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
-                disabled={postSaving}
-              >
-                {postSaving ? "Updating..." : "Update Post"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ====== Notice Modal for Approved/Reject ====== */}
-      {noticeOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-3">Notice</h3>
-            <p className="text-sm text-gray-700 whitespace-pre-line">
-              {noticeText}
-            </p>
-            <div className="mt-5 flex justify-end">
-              <button
-                onClick={() => setNoticeOpen(false)}
-                className="px-4 py-2 bg-blue text-white rounded-md hover:bg-blue-600"
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Edit Address Modal */}
       {addressModal && editingAddress && (
@@ -2262,6 +2174,134 @@ const MyAccount = () => {
       {/* Add New Address Modal - fallback to existing modal */}
       {addressModal && !editingAddress && (
         <AddressModal isOpen={addressModal} closeModal={closeAddressModal} />
+      )}
+
+      {/* Edit Post Modal */}
+      {editPostModal && editingPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold">Edit Post</h3>
+              <button
+                onClick={closeEditPostModal}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editPostForm.title}
+                  onChange={(e) =>
+                    handleEditPostFormChange("title", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter post title"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={editPostForm.description}
+                  onChange={(e) =>
+                    handleEditPostFormChange("description", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+                  placeholder="Enter post description"
+                  rows={4}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Price (VND) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={editPostForm.price}
+                    onChange={(e) =>
+                      handleEditPostFormChange("price", Number(e.target.value))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter price"
+                    min="0"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Condition
+                  </label>
+                  <select
+                    value={editPostForm.condition}
+                    onChange={(e) =>
+                      handleEditPostFormChange("condition", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select condition</option>
+                    <option value="NEW">New</option>
+                    <option value="LIKE_NEW">Like New</option>
+                    <option value="GOOD">Good</option>
+                    <option value="FAIR">Fair</option>
+                    <option value="POOR">Poor</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> Some fields like category and images
+                  cannot be changed here. To modify those, please create a new
+                  post.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={closeEditPostModal}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
+                disabled={editPostLoading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updatePost}
+                disabled={
+                  editPostLoading || !editPostForm.title || !editPostForm.price
+                }
+                className="flex-1 px-4 py-2 bg-blue text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {editPostLoading ? "Updating..." : "Update Post"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Buy Package Modal */}

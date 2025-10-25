@@ -1,90 +1,51 @@
-// src/services/axios.ts
-import axios, {
-  AxiosHeaders,
-  InternalAxiosRequestConfig,
-  AxiosError,
-} from "axios";
+import axios, { AxiosHeaders, InternalAxiosRequestConfig } from "axios";
+const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-// 1) Đọc .env + chuẩn hoá baseURL
-const raw =
-  process.env.NEXT_PUBLIC_API_BASE ??
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? // bạn có thể dùng biến này
-  "http://localhost:5000/api";
+const config = {
+  baseURL: baseUrl,
+  timeout: 30000, // 30 seconds timeout
+  headers: {
+    "Content-Type": "application/json",
+  },
+};
 
-// Bỏ mọi dấu "/" ở cuối để tránh lỗi ghép chuỗi
-const baseURL = raw.replace(/\/+$/, "");
+const api = axios.create(config);
 
-// (Tùy chọn) Log để kiểm tra nhanh trên trình duyệt
-if (typeof window !== "undefined") {
-  // eslint-disable-next-line no-console
-  console.log("[API] baseURL =", baseURL);
-}
-
-const api = axios.create({
-  baseURL,
-  headers: { "Content-Type": "application/json" },
-  withCredentials: true,
-  // timeout: 15000, // nếu muốn
-});
-
-// 2) Request interceptor: gắn token + đảm bảo URL có "/" đầu
+// handle before call API
 const handleBefore = (
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig => {
-  // a) đảm bảo đường dẫn con luôn có "/" đầu
-  //    ví dụ: api.get("posts/1") -> "/posts/1"
-  if (
-    config.url &&
-    !config.url.startsWith("http") &&
-    !config.url.startsWith("/") &&
-    typeof config.url === "string"
-  ) {
-    config.url = `/${config.url}`;
-  }
-
-  // b) gắn Authorization khi có token
   const token =
     typeof window !== "undefined"
       ? localStorage.getItem("token")?.replaceAll('"', "")
       : undefined;
-
-  if (!config.headers) config.headers = new AxiosHeaders();
-
-  if (token) {
-    (config.headers as AxiosHeaders).set("Authorization", `Bearer ${token}`);
-  } else {
-    // đảm bảo không gửi chuỗi "Bearer undefined"
-    (config.headers as AxiosHeaders).delete?.("Authorization");
+  if (!config.headers) {
+    config.headers = new AxiosHeaders();
   }
-
+  config.headers.set("Authorization", `Bearer ${token}`);
   return config;
 };
 
-api.interceptors.request.use(handleBefore, (error) => Promise.reject(error));
-
-// 3) Response interceptor: refresh token khi 401 và replay request
+// Response interceptor to handle token refresh
 api.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError<any>) => {
-    const originalRequest: any = error.config;
+  async (error) => {
+    const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest?._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        // Dynamic import để tránh circular dependency
+        // Dynamic import to avoid circular dependency
         const { refreshAccessToken } = await import("@/services/auth");
         const newToken = await refreshAccessToken();
 
         if (newToken) {
-          // Cập nhật header cho request gốc
-          originalRequest.headers = {
-            ...(originalRequest.headers || {}),
-            Authorization: `Bearer ${newToken}`,
-          };
-          return api.request(originalRequest);
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return api(originalRequest);
         }
       } catch (refreshError) {
+        // Refresh failed, redirect to login
         if (typeof window !== "undefined") {
           window.location.href = "/signin";
         }
@@ -96,8 +57,7 @@ api.interceptors.response.use(
   }
 );
 
-// (Tùy chọn) helper nếu muốn dùng ở nơi khác
-export const ensureSlash = (path: string) =>
-  path.startsWith("/") ? path : `/${path}`;
+api.interceptors.request.use(handleBefore, (error) => Promise.reject(error));
+api.defaults.withCredentials = true;
 
 export default api;
