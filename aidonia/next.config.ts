@@ -1,10 +1,23 @@
 import type { NextConfig } from "next";
 
+const isProd = process.env.NODE_ENV === "production";
+
 const nextConfig: NextConfig = {
+  // ✅ PRODUCTION: Remove console logs in production
+  compiler: {
+    removeConsole: isProd
+      ? {
+          exclude: ["error", "warn"], // Keep error and warn for debugging
+        }
+      : false,
+  },
+
   // ✅ PERFORMANCE: Enable experimental features for speed
   experimental: {
     // Optimize CSS handling
     optimizeCss: true,
+    // Optimize package imports
+    optimizePackageImports: ["@heroicons/react", "lucide-react", "recharts"],
   },
 
   // ✅ TURBOPACK: Modern bundler configuration (replaces experimental.turbo)
