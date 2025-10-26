@@ -71,7 +71,7 @@ const ProductItem = ({ item }: { item: ExtendedProduct }) => {
     try {
       if (isFavorited && favoriteId) {
         // Remove from favorites
-        await removeFromFavorites(favoriteId);
+        await removeFromFavorites(user.id, favoriteId);
         setIsFavorited(false);
         setFavoriteId(null);
         showSuccessToast("Removed from wishlist!");

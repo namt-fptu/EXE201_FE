@@ -4,8 +4,6 @@ import {
   EmailIcon,
   UserIcon,
 } from "@/assets/icons";
-import { InputGroup } from "@/components/admin/FormElements/InputGroup";
-import { ShowcaseSection } from "@/components/admin/Layouts/showcase-section";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useUserStore from "@/redux/userStore";

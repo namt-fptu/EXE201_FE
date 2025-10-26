@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   description: "Browse products on Aidonia",
 };
 
+// Disable static generation for this page
+export const dynamic = "force-dynamic";
+
 const ShopWithSidebarPage = () => {
   return (
     <main>
