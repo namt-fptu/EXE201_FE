@@ -111,12 +111,32 @@ const BuyPackageModal: React.FC<BuyPackageModalProps> = ({
 
       toast.dismiss();
 
-      if (response?.success && response?.data) {
-        setPaymentData(response.data);
-        setStep("payment");
+      console.log("Buy package response:", response);
 
-        // Start checking payment status
-        startPaymentCheck(response.data.orderCode);
+      if ((response?.success || response?.isSuccess) && response?.data) {
+        // Check if data is a string URL (direct redirect case)
+        if (typeof response.data === 'string') {
+          toast.success("Redirecting to payment page...");
+          window.location.href = response.data;
+          return;
+        }
+        
+        // Otherwise handle as payment data object
+        setPaymentData(response.data);
+        
+        // Redirect to payment URL if available
+        if (response.data.checkoutUrl) {
+          toast.success("Redirecting to payment page...");
+          window.location.href = response.data.checkoutUrl;
+        } else {
+          // Fallback to showing payment info in modal
+          setStep("payment");
+        }
+
+        // Start checking payment status if orderCode exists
+        if (response.data.orderCode) {
+          startPaymentCheck(response.data.orderCode);
+        }
       } else {
         toast.error("Failed to create payment link");
       }
