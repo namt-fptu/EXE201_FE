@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Breadcrumb from "../Common/Breadcrumb";
 import Image from "next/image";
 import AddressModal from "./AddressModal";
@@ -108,6 +108,7 @@ const MyAccount = () => {
 
   const { user, isAuthenticated, logout } = useUserStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Logout handler
   const handleLogout = () => {
@@ -521,6 +522,14 @@ const MyAccount = () => {
     loadUserPosts,
     loadUserAddresses,
   ]);
+
+  // Handle URL parameters to set active tab
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['posts', 'packages', 'deals', 'addresses', 'account-details', 'history'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   // Show loading while checking authentication
   if (isLoading) {

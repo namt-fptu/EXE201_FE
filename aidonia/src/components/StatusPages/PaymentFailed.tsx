@@ -89,7 +89,7 @@ const PaymentFailed = () => {
                     : "opacity-0 translate-y-4"
                 }`}
               >
-                <Link
+                {/* <Link
                   href="/checkout"
                   className="inline-flex items-center gap-2 font-medium text-white bg-blue py-3 px-6 rounded-md ease-out duration-200 hover:bg-blue-dark hover:shadow-lg transform hover:scale-105"
                 >
@@ -107,7 +107,7 @@ const PaymentFailed = () => {
                     />
                   </svg>
                   Try Again
-                </Link>
+                </Link> */}
 
                 <Link
                   href="/"
@@ -138,36 +138,23 @@ const PaymentFailed = () => {
                     : "opacity-0 translate-y-4"
                 }`}
               >
-                <h4 className="font-medium text-dark text-lg mb-2">
-                  Need Help?
-                </h4>
-                <p className="text-gray-6 text-sm mb-4">
-                  If you continue to experience issues, please contact our
-                  support team.
-                </p>
-                <Link
-                  href="/contact"
-                  className="inline-flex items-center gap-2 font-medium text-blue hover:text-blue-dark ease-out duration-200"
-                >
-                  <svg
-                    className="fill-current"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
+                <h4 className="font-medium text-dark text-lg mb-2">Contact Us</h4>
+                <div className="flex flex-col items-center gap-1 text-gray-6 text-sm">
+                  <a
+                    href="tel:+84397125134"
+                    className="hover:text-blue font-medium"
+                    aria-label="Call us at (+84) 397125134"
                   >
-                    <path
-                      d="M18.125 13.75V16.25C18.125 17.0456 17.4706 17.7 16.675 17.7H3.325C2.52938 17.7 1.875 17.0456 1.875 16.25V13.75C1.875 13.4738 2.09875 13.25 2.375 13.25C2.65125 13.25 2.875 13.4738 2.875 13.75V16.25C2.875 16.4931 3.08188 16.7 3.325 16.7H16.675C16.9181 16.7 17.125 16.4931 17.125 16.25V13.75C17.125 13.4738 17.3488 13.25 17.625 13.25C17.9012 13.25 18.125 13.4738 18.125 13.75Z"
-                      fill=""
-                    />
-                    <path
-                      d="M10 2.25C10.2762 2.25 10.5 2.47375 10.5 2.75V11.4394L13.0581 8.88125C13.2581 8.68125 13.5825 8.68125 13.7825 8.88125C13.9825 9.08125 13.9825 9.40563 13.7825 9.60563L10.3619 13.0262C10.2619 13.1262 10.1312 13.1769 10 13.1769C9.86875 13.1769 9.73813 13.1262 9.63813 13.0262L6.2175 9.60563C6.0175 9.40563 6.0175 9.08125 6.2175 8.88125C6.4175 8.68125 6.74188 8.68125 6.94188 8.88125L9.5 11.4394V2.75C9.5 2.47375 9.72375 2.25 10 2.25Z"
-                      fill=""
-                    />
-                  </svg>
-                  Contact Support
-                </Link>
+                    (+84) 397125134
+                  </a>
+                  <a
+                    href="mailto:aidonia2025@gmail.com"
+                    className="hover:text-blue font-medium"
+                    aria-label="Email us at aidonia2025@gmail.com"
+                  >
+                    aidonia2025@gmail.com
+                  </a>
+                </div>
               </div>
             </div>
           </div>

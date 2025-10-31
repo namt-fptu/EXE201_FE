@@ -102,7 +102,7 @@ const PaymentSuccess = () => {
                 }`}
               >
                 <Link
-                  href="/orders"
+                  href="/my-account?tab=history"
                   className="inline-flex items-center gap-2 font-medium text-white bg-blue py-3 px-6 rounded-md ease-out duration-200 hover:bg-blue-dark hover:shadow-lg transform hover:scale-105"
                 >
                   <svg
@@ -118,7 +118,7 @@ const PaymentSuccess = () => {
                       fill=""
                     />
                   </svg>
-                  View My Orders
+                  View Payment History
                 </Link>
 
                 <Link
