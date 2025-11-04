@@ -1,5 +1,5 @@
 import MyAccount from "@/components/MyAccount";
-import React from "react";
+import React, { Suspense } from "react";
 
 import { Metadata } from "next";
 export const metadata: Metadata = {
@@ -10,7 +10,13 @@ export const metadata: Metadata = {
 const MyAccountPage = () => {
   return (
     <main>
-      <MyAccount />
+      <Suspense fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+        </div>
+      }>
+        <MyAccount />
+      </Suspense>
     </main>
   );
 };
