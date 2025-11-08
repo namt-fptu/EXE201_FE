@@ -20,6 +20,19 @@ export interface RevenueByYear {
   totalRevenue: number;
 }
 
+// Completed payment interface
+export interface CompletedPayment {
+  id: number;
+  userId: number;
+  username: string;
+  userEmail: string;
+  packageId: number;
+  packageName: string;
+  amount: number;
+  paidAt: string;
+  status: string;
+}
+
 export const statisticsService = {
   // Get total posts
   getTotalPosts: async (): Promise<StatisticsResponse<number>> => {
@@ -139,6 +152,21 @@ export const statisticsService = {
           totalRevenue: 0
         },
         message: 'Failed to fetch revenue by year'
+      };
+    }
+  },
+
+  // Get completed payments
+  getCompletedPayments: async (): Promise<StatisticsResponse<CompletedPayment[]>> => {
+    try {
+      const response = await api.get<StatisticsResponse<CompletedPayment[]>>('/statistical/completed-payments');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching completed payments:', error);
+      return {
+        isSuccess: false,
+        data: [],
+        message: 'Failed to fetch completed payments'
       };
     }
   }

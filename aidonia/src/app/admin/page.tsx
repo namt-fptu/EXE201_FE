@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import useUserStore from "@/redux/userStore";
 import Link from "next/link";
 import { dashboardService } from "@/services/dashboard";
+import { statisticsService, CompletedPayment } from "@/services/statisticsService";
 
 type PropsType = {
   searchParams: Promise<{
@@ -26,6 +27,8 @@ function AdminPageContent({
   const [totalPayments, setTotalPayments] = useState<number>(0);
   const [totalRevenue, setTotalRevenue] = useState<number>(0);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [completedPayments, setCompletedPayments] = useState<CompletedPayment[]>([]);
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false);
 
   useEffect(() => {
     // Single check on mount
@@ -93,6 +96,32 @@ function AdminPageContent({
     };
 
     loadStats();
+  }, [canAccess, isChecking]);
+
+  // Load completed payments
+  useEffect(() => {
+    const loadCompletedPayments = async () => {
+      if (canAccess && !isChecking) {
+        try {
+          setIsLoadingPayments(true);
+          const response = await statisticsService.getCompletedPayments();
+          
+          if (response?.isSuccess) {
+            setCompletedPayments(response.data);
+          } else {
+            console.error('Failed to load completed payments:', response?.message);
+            setCompletedPayments([]);
+          }
+        } catch (error) {
+          console.error('Error loading completed payments:', error);
+          setCompletedPayments([]);
+        } finally {
+          setIsLoadingPayments(false);
+        }
+      }
+    };
+
+    loadCompletedPayments();
   }, [canAccess, isChecking]);
 
   if (isChecking) {
@@ -207,97 +236,232 @@ function AdminPageContent({
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid-cols-1">
-        <div className="bg-white rounded-xl shadow-lg border border-accent-200 hover:shadow-xl hover:border-accent-300 transition-all duration-300 p-6">
-          <h3 className="text-lg font-bold text-accent-700 mb-4">Quick Actions</h3>
-          <div className="space-y-3">
-            <Link
-              href="/admin/packages"
-              className="block w-full p-3 text-left hover:bg-primary-50 rounded-lg transition-colors duration-200 border border-transparent hover:border-primary-200"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary-100 rounded-lg">
-                  <svg className="w-4 h-4 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900">Manage Packages</p>
-                  <p className="text-sm font-medium text-primary-600">Create and edit packages</p>
-                </div>
-              </div>
-            </Link>
 
-            <Link
-              href="/admin/post-approval"
-              className="block w-full p-3 text-left hover:bg-yellow-50 rounded-lg transition-colors duration-200 border border-transparent hover:border-yellow-200"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-yellow-100 rounded-lg">
-                  <svg className="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900">Duyệt bài đăng</p>
-                  <p className="text-sm font-medium text-yellow-600">Quản lý và duyệt bài đăng</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/categories"
-              className="block w-full p-3 text-left hover:bg-purple-50 rounded-lg transition-colors duration-200 border border-transparent hover:border-purple-200"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <svg className="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900">Quản lý danh mục</p>
-                  <p className="text-sm font-medium text-purple-600">Tạo và quản lý danh mục</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/analytics"
-              className="block w-full p-3 text-left hover:bg-accent-50 rounded-lg transition-colors duration-200 border border-transparent hover:border-accent-200"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-accent-100 rounded-lg">
-                  <svg className="w-4 h-4 text-accent-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7z" clipRule="evenodd"/>
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900">View Analytics</p>
-                  <p className="text-sm font-medium text-accent-600">Check platform metrics</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/pages/settings"
-              className="block w-full p-3 text-left hover:bg-secondary-50 rounded-lg transition-colors duration-200 border border-transparent hover:border-secondary-200"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-secondary-100 rounded-lg">
-                  <svg className="w-4 h-4 text-secondary-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd"/>
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900">System Settings</p>
-                  <p className="text-sm font-medium text-secondary-600">Configure platform</p>
-                </div>
-              </div>
-            </Link>
+      {/* Completed Payments Table */}
+      <div style={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        borderRadius: '16px',
+        padding: '24px',
+        boxShadow: '0 10px 30px rgba(102, 126, 234, 0.3)'
+      }}>
+        <div className="flex items-center gap-3 mb-6">
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            padding: '10px',
+            borderRadius: '12px'
+          }}>
+            <svg className="w-6 h-6" style={{ color: '#fff' }} fill="currentColor" viewBox="0 0 20 20">
+              <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+              <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd"/>
+            </svg>
           </div>
+          <h3 style={{ 
+            color: '#fff', 
+            fontSize: '24px', 
+            fontWeight: '700',
+            textShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          }}>Completed Payments</h3>
+          {isLoadingPayments && (
+            <div className="flex items-center gap-2 ml-auto">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              <span style={{ color: '#fff', fontSize: '14px', fontWeight: '600' }}>Loading...</span>
+            </div>
+          )}
         </div>
+
+        {!isLoadingPayments && completedPayments.length === 0 ? (
+          <div className="text-center py-12" style={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '12px' }}>
+            <svg className="w-20 h-20 mx-auto mb-4" style={{ color: '#cbd5e1' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+            </svg>
+            <p style={{ color: '#64748b', fontWeight: '700', fontSize: '18px' }}>No completed payments found</p>
+          </div>
+        ) : (
+          <div style={{ 
+            overflowX: 'auto',
+            backgroundColor: '#fff',
+            borderRadius: '12px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+          }}>
+            <table className="w-full">
+              <thead style={{ background: 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)' }}>
+                <tr>
+                  <th style={{ 
+                    padding: '16px 24px', 
+                    textAlign: 'left', 
+                    color: '#fff', 
+                    fontWeight: '700',
+                    fontSize: '12px',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase'
+                  }}>ID</th>
+                  <th style={{ 
+                    padding: '16px 24px', 
+                    textAlign: 'left', 
+                    color: '#fff', 
+                    fontWeight: '700',
+                    fontSize: '12px',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase'
+                  }}>User</th>
+                  <th style={{ 
+                    padding: '16px 24px', 
+                    textAlign: 'left', 
+                    color: '#fff', 
+                    fontWeight: '700',
+                    fontSize: '12px',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase'
+                  }}>Email</th>
+                  <th style={{ 
+                    padding: '16px 24px', 
+                    textAlign: 'left', 
+                    color: '#fff', 
+                    fontWeight: '700',
+                    fontSize: '12px',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase'
+                  }}>Package</th>
+                  <th style={{ 
+                    padding: '16px 24px', 
+                    textAlign: 'left', 
+                    color: '#fff', 
+                    fontWeight: '700',
+                    fontSize: '12px',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase'
+                  }}>Amount</th>
+                  <th style={{ 
+                    padding: '16px 24px', 
+                    textAlign: 'left', 
+                    color: '#fff', 
+                    fontWeight: '700',
+                    fontSize: '12px',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase'
+                  }}>Paid At</th>
+                  <th style={{ 
+                    padding: '16px 24px', 
+                    textAlign: 'left', 
+                    color: '#fff', 
+                    fontWeight: '700',
+                    fontSize: '12px',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase'
+                  }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {completedPayments.map((payment, index) => (
+                  <tr 
+                    key={payment.id}
+                    style={{
+                      backgroundColor: index % 2 === 0 ? '#fff' : '#f8fafc',
+                      borderBottom: '1px solid #e2e8f0',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#eff6ff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = index % 2 === 0 ? '#fff' : '#f8fafc';
+                    }}
+                  >
+                    <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        padding: '6px 12px',
+                        borderRadius: '20px',
+                        backgroundColor: '#dbeafe',
+                        color: '#1e40af',
+                        fontSize: '14px',
+                        fontWeight: '700'
+                      }}>
+                        #{payment.id}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }}>
+                      <div style={{ color: '#0f172a', fontSize: '14px', fontWeight: '700' }}>
+                        {payment.username}
+                      </div>
+                      <div style={{ color: '#3b82f6', fontSize: '12px', fontWeight: '600', marginTop: '2px' }}>
+                        ID: {payment.userId}
+                      </div>
+                    </td>
+                    <td style={{ 
+                      padding: '16px 24px', 
+                      whiteSpace: 'nowrap',
+                      color: '#334155',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}>
+                      {payment.userEmail}
+                    </td>
+                    <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }}>
+                      <div style={{ color: '#6366f1', fontSize: '14px', fontWeight: '700' }}>
+                        {payment.packageName}
+                      </div>
+                      <div style={{ color: '#818cf8', fontSize: '12px', fontWeight: '600', marginTop: '2px' }}>
+                        ID: {payment.packageId}
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }}>
+                      <span style={{ 
+                        color: '#059669', 
+                        fontSize: '18px', 
+                        fontWeight: '700' 
+                      }}>
+                        {payment.amount.toLocaleString()}
+                      </span>
+                      <span style={{ 
+                        color: '#059669', 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        marginLeft: '4px'
+                      }}>
+                        VNĐ
+                      </span>
+                    </td>
+                    <td style={{ 
+                      padding: '16px 24px', 
+                      whiteSpace: 'nowrap',
+                      color: '#334155',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}>
+                      {new Date(payment.paidAt).toLocaleString('vi-VN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </td>
+                    <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                        color: '#fff',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)'
+                      }}>
+                        <svg style={{ width: '16px', height: '16px', marginRight: '4px' }} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                        </svg>
+                        {payment.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -98,69 +98,12 @@ export default function Page() {
       <Breadcrumb pageName="Profile" />
 
       <div className="overflow-hidden rounded-xl bg-white shadow-lg border border-primary-200 hover:shadow-xl transition-all duration-300">
-        <div className="relative z-20 h-35 md:h-65">
-          <Image
-            src={data?.coverPhoto}
-            alt="profile cover"
-            className="h-full w-full rounded-tl-xl rounded-tr-xl object-cover object-center"
-            width={970}
-            height={260}
-            style={{
-              width: "auto",
-              height: "auto",
-            }}
-          />
-          <div className="absolute bottom-1 right-1 z-10 xsm:bottom-4 xsm:right-4">
-            <label
-              htmlFor="cover"
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 px-4 py-2 text-sm font-semibold text-white hover:from-primary-600 hover:to-primary-700 shadow-lg shadow-primary-500/25 transition-all duration-200 hover:scale-105"
-            >
-              <input
-                type="file"
-                name="coverPhoto"
-                id="coverPhoto"
-                className="sr-only"
-                onChange={handleChange}
-                accept="image/png, image/jpg, image/jpeg"
-              />
-
-              <CameraIcon />
-
-              <span>Edit Cover</span>
-            </label>
-          </div>
-        </div>
+        <div className="relative bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-48 rounded-t-xl"></div>
         <div className="px-6 pb-8 text-center lg:pb-10 xl:pb-12">
-          <div className="relative z-30 mx-auto -mt-22 h-30 w-full max-w-30 rounded-full bg-white/20 p-1 backdrop-blur sm:h-44 sm:max-w-[176px] sm:p-3 border-4 border-primary-200 shadow-xl">
-            <div className="relative drop-shadow-2">
-              {data?.profilePhoto && (
-                <>
-                  <Image
-                    src={data?.profilePhoto}
-                    width={160}
-                    height={160}
-                    className="overflow-hidden rounded-full border-2 border-white"
-                    alt="profile"
-                  />
-
-                  <label
-                    htmlFor="profilePhoto"
-                    className="absolute bottom-0 right-0 flex size-10 cursor-pointer items-center justify-center rounded-full bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 shadow-lg shadow-primary-500/25 transition-all duration-200 hover:scale-110 sm:bottom-2 sm:right-2"
-                  >
-                    <CameraIcon />
-
-                    <input
-                      type="file"
-                      name="profilePhoto"
-                      id="profilePhoto"
-                      className="sr-only"
-                      onChange={handleChange}
-                      accept="image/png, image/jpg, image/jpeg"
-                    />
-                  </label>
-                </>
-              )}
-            </div>
+          <div className="relative z-30 mx-auto -mt-16 mb-8 flex items-center justify-center w-32 h-32 rounded-full bg-slate-100 text-slate-900 shadow-2xl border-4 border-white">
+            <span className="text-5xl font-bold">
+              {data?.name.charAt(0).toUpperCase()}
+            </span>
           </div>
           <div className="mt-6">
             <h3 className="mb-2 text-2xl font-bold text-slate-900">
