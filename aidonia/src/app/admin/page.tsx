@@ -140,6 +140,12 @@ function AdminPageContent({
           <h1 className="text-3xl font-bold text-slate-900">Aidonia Dashboard</h1>
           <p className="text-slate-700 mt-1 font-semibold">Welcome to Aidonia admin dashboard</p>
         </div>
+        <div className="flex items-center gap-3">
+          <div className="px-4 py-2 bg-white rounded-xl shadow-md border border-primary-100">
+            <p className="text-xs text-slate-500 font-medium">Today</p>
+            <p className="text-sm font-bold text-primary-700">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+          </div>
+        </div>
       </div>
 
       {/* Quick Stats */}

@@ -167,9 +167,9 @@ export default function AnalyticsPage() {
   }
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("vi-VN", {
       style: "currency",
-      currency: "USD",
+      currency: "VND",
       minimumFractionDigits: 0,
     }).format(value);
   };
@@ -545,7 +545,7 @@ export default function AnalyticsPage() {
               stroke="#6B7280"
               style={{ fontSize: "12px", fontWeight: "500" }}
               tickFormatter={(value: number) =>
-                `$${(value / 1000).toFixed(0)}k`
+                `${(value / 1000).toFixed(0)}k`
               }
             />
             <Tooltip content={<CustomTooltip />} />
